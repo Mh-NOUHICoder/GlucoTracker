@@ -1,65 +1,79 @@
-import Image from "next/image";
+"use client";
+
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { ArrowRight, Activity, ShieldCheck, Zap } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="flex flex-col items-center justify-center min-h-[80vh]">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="text-center max-w-3xl mx-auto space-y-8"
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-medical-cyan/30 bg-medical-cyan/10 text-medical-cyan mb-4"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-medical-cyan opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-medical-cyan"></span>
+          </span>
+          <span className="text-xs font-medium tracking-wide uppercase">AI-Powered Tracking</span>
+        </motion.div>
+        
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-white">
+          Intelligent <span className="text-transparent bg-clip-text bg-gradient-to-r from-medical-blue-light to-medical-cyan">Diabetes</span> Care
+        </h1>
+        
+        <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          Monitor your glucose levels effortlessly using advanced AI image recognition. Just valid insights, zero friction.
+        </p>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
+          <Link href="/dashboard">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-8 py-4 rounded-full bg-gradient-to-r from-medical-blue to-medical-cyan text-white font-medium flex items-center justify-center gap-2 shadow-lg shadow-medical-blue/25 w-full sm:w-auto"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              Open Dashboard <ArrowRight className="w-5 h-5" />
+            </motion.div>
+          </Link>
+          <Link href="/upload">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-8 py-4 rounded-full border border-medical-blue/30 bg-medical-dark/50 text-white font-medium flex items-center justify-center hover:bg-medical-blue/10 transition-colors w-full sm:w-auto"
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              Scan Reading
+            </motion.div>
+          </Link>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </motion.div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6, duration: 0.8 }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mt-24"
+      >
+        {[
+          { icon: Zap, title: "Instant Extraction", desc: "Our AI reads your meter display instantly from photos." },
+          { icon: Activity, title: "Smart Trends", desc: "Visualize patterns and predict potential hypo/hyperglycemic events." },
+          { icon: ShieldCheck, title: "Secure & Private", desc: "Your health data is encrypted and completely under your control." },
+        ].map((feature, i) => (
+          <div key={i} className="p-6 rounded-2xl border border-medical-blue/10 bg-medical-dark/40 backdrop-blur-sm">
+            <feature.icon className="w-8 h-8 text-medical-cyan mb-4" />
+            <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">{feature.desc}</p>
+          </div>
+        ))}
+      </motion.div>
     </div>
   );
 }
