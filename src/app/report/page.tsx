@@ -1,9 +1,14 @@
 "use client";
 // Next.js page that provides a download link for the PDF report.
 
-import React from "react";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import { ReportPDF } from "@/components/ReportPDF";
+import nextDynamic from "next/dynamic";
+
+const ReportDownloadClient = nextDynamic(
+  () => import("@/components/ReportDownloadClient"),
+  { ssr: false }
+);
+
+export const dynamic = "force-dynamic";
 
 // Mock data – in a real app this would come from server or context.
 const mockReadings = [
@@ -20,31 +25,16 @@ export default function ReportPage() {
 
   return (
     <div style={{ padding: "2rem", textAlign: "center" }}>
-      <h1>Download Glucose Report</h1>
-      <PDFDownloadLink
-        document={
-          <ReportPDF
-            patientName={patientName}
-            patientEmail={patientEmail}
-            generatedDate={generatedDate}
-            readings={mockReadings}
-            unit="mg/dL"
-            targetMin={70}
-            targetMax={180}
-            locale="en"
-          />
-        }
-        fileName="glucose_report.pdf"
-        style={{
-          textDecoration: "none",
-          padding: "10px 20px",
-          color: "#fff",
-          backgroundColor: "#10b981",
-          borderRadius: "4px",
-        }}
-      >
-        {({ loading }) => (loading ? "Preparing document..." : "Download PDF")}
-      </PDFDownloadLink>
+      <ReportDownloadClient
+        patientName={patientName}
+        patientEmail={patientEmail}
+        generatedDate={generatedDate}
+        readings={mockReadings}
+        unit="mg/dL"
+        targetMin={70}
+        targetMax={180}
+        locale="en"
+      />
     </div>
   );
 }
