@@ -188,7 +188,7 @@ export const dict: Translations = {
     open_camera: "Ouvrir la Caméra",
     open_camera_desc: "Prenez une photo en direct de votre lecteur",
     upload_gallery: "Galerie d'images",
-    sign_in_save: "Connectez-vous pour Sauver",
+    sign_in_save: "Connectez-vous",
     capture_another: "Prendre une autre",
     add_reading: "Ajouter une Lecture",
     welcome_back: "Bon Retour",
