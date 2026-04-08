@@ -59,13 +59,13 @@ export default function BackgroundServices() {
 
                  // Morning Alert
                  if (currentHour === mHour && currentMinute >= mMin && !localStorage.getItem(morningKey)) {
-                    sendNotification("GlucoTrack AI Reminder", "Hi there, it's time for your morning glucose check. 🌞");
+                    sendNotification(t("gluco_reminder_title"), t("morning_gluco_body"));
                     localStorage.setItem(morningKey, "true");
                  }
 
                  // Noon Alert
                  if (currentHour === nHour && currentMinute >= nMin && !localStorage.getItem(noonKey)) {
-                    sendNotification("GlucoTrack AI Reminder", "Friendly reminder to complete your midday glucose check. 🍽️");
+                    sendNotification(t("gluco_reminder_title"), t("noon_gluco_body"));
                     localStorage.setItem(noonKey, "true");
                  }
                }
@@ -80,7 +80,7 @@ export default function BackgroundServices() {
            const lastWater = lastWaterStr ? Number(lastWaterStr) : 0;
            
            if (now.getTime() - lastWater >= waterInterval * 60 * 60 * 1000) {
-              sendNotification("Hydration Reminder 💧", "Staying hydrated is essential for processing glucose. Remember to drink a glass of water!");
+              sendNotification(t("hydration_title"), t("hydration_body"));
               localStorage.setItem(`last_water_${user.id}`, String(now.getTime()));
            }
         }
@@ -90,18 +90,43 @@ export default function BackgroundServices() {
       }
     };
 
+    const playNotificationSound = () => {
+      try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+      } catch (e) {
+        console.error("Audio playback failed", e);
+      }
+    };
+
     const sendNotification = (title: string, body: string) => {
+      playNotificationSound();
+      
       if ("Notification" in window && Notification.permission === "granted") {
          if (swRegistration.current) {
             swRegistration.current.showNotification(title, {
                body,
                icon: "/glucotracker.png", // Fallback if no specific badge
                badge: "/glucotracker.png",
-               data: { url: "/upload" }
-            });
+               data: { url: "/upload" },
+               silent: false,
+               vibrate: [200, 100, 200]
+            } as any);
          } else {
             // Fallback to normal Notification API if SW isn't ready
-            new Notification(title, { body, icon: "/glucotracker.png" });
+            const notification = new Notification(title, { body, icon: "/glucotracker.png", silent: false });
          }
       }
     };

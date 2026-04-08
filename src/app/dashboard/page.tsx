@@ -412,7 +412,7 @@ export default function DashboardPage() {
         className="w-full border border-white/5 bg-medical-dark/40 backdrop-blur-3xl p-6 md:p-10 rounded-[3rem] shadow-2xl relative overflow-hidden"
       >
         <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-5" />
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 relative z-10 w-full gap-8">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 relative z-50 w-full gap-8">
            <div>
             <h2 className="text-2xl md:text-3xl font-black text-white flex items-center gap-3 tracking-tighter">
               <div className="w-2 h-8 bg-medical-cyan rounded-full" />

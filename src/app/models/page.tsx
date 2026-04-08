@@ -189,27 +189,47 @@ export default function ProfileSettingsPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex bg-medical-dark/40 p-1.5 rounded-2xl border border-white/5 gap-2 overflow-x-auto no-scrollbar">
-        {[
-          { id: "profile", label: t("profile") },
-          { id: "general", label: t("units") },
-          { id: "ai", label: t("ai_engine") },
-          { id: "alerts", label: t("reminders") },
-          { id: "data", label: t("data_manage") }
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 min-w-[100px] py-3 rounded-xl font-bold text-sm transition-all ${
-              activeTab === tab.id 
-                ? "bg-medical-cyan text-white shadow-lg shadow-medical-cyan/20" 
-                : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Modern Tabs */}
+      <div className="w-full relative">
+         <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-medical-black/80 to-transparent pointer-events-none z-20 block md:hidden rounded-r-2xl" />
+         <div className="flex bg-medical-dark/30 backdrop-blur-xl p-1.5 rounded-[1.5rem] border border-white/5 gap-1 overflow-x-auto no-scrollbar shadow-inner relative z-10 items-center">
+           {[
+             { id: "profile", label: t("profile"), icon: User },
+             { id: "general", label: t("units"), icon: Target },
+             { id: "ai", label: t("ai_engine"), icon: Cpu },
+             { id: "alerts", label: t("reminders"), icon: Bell },
+             { id: "data", label: t("data_manage"), icon: Database }
+           ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative flex items-center justify-center gap-2 px-5 py-3 min-w-max rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex-1 ${
+                    isActive 
+                      ? "text-white" 
+                      : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+                  }`}
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTabSettings"
+                      className="absolute inset-0 bg-medical-cyan rounded-[1.25rem] shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+                      initial={false}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      style={{ zIndex: 0 }}
+                    />
+                  )}
+                  <div className="relative z-10 flex items-center gap-2">
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-500'}`} />
+                    {tab.label}
+                  </div>
+                </button>
+              );
+           })}
+         </div>
       </div>
 
       {!clerkLoaded ? (
@@ -427,6 +447,54 @@ export default function ProfileSettingsPage() {
                     <h3 className="text-2xl font-black text-white">{t("smart_reminders")}</h3>
                     <p className="text-sm text-gray-500 font-medium">{t("manage_notifications")}</p>
                   </div>
+                  <button 
+                     onClick={() => {
+                       try {
+                         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+                         if (AudioContext) {
+                           const ctx = new AudioContext();
+                           const osc = ctx.createOscillator();
+                           const gainNode = ctx.createGain();
+                           osc.type = "sine";
+                           osc.frequency.setValueAtTime(880, ctx.currentTime);
+                           osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1);
+                           gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+                           gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+                           osc.connect(gainNode);
+                           gainNode.connect(ctx.destination);
+                           osc.start();
+                           osc.stop(ctx.currentTime + 0.5);
+                         }
+                       } catch (e) {
+                         console.error(e);
+                       }
+                       if ("Notification" in window) {
+                         if (Notification.permission === "granted") {
+                           navigator.serviceWorker.ready.then((registration) => {
+                             registration.showNotification(t("gluco_reminder_title") || "Test Notification", {
+                               body: "This is a test notification. 🔔",
+                               icon: "/glucotracker.png",
+                               badge: "/glucotracker.png",
+                               silent: false,
+                               vibrate: [200, 100, 200]
+                             } as any);
+                           }).catch(() => {
+                             new Notification(t("gluco_reminder_title") || "Test Notification", { body: "This is a test notification. 🔔", icon: "/glucotracker.png", silent: false });
+                           });
+                         } else if (Notification.permission !== "denied") {
+                           Notification.requestPermission().then((permission) => {
+                             if (permission === 'granted') toast.success("Permission granted! Click again to test.");
+                           });
+                         } else {
+                           toast.error("Notification permission denied.");
+                         }
+                       }
+                     }}
+                     className="ml-auto px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+                  >
+                     <Bell className="w-4 h-4" />
+                     Test
+                  </button>
                 </div>
 
                 <div className="space-y-8">

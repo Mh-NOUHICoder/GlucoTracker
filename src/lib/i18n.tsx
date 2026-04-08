@@ -153,6 +153,11 @@ export const dict: Translations = {
     hour: "hour",
     day: "day",
     days: "days",
+    gluco_reminder_title: "GlucoTrack AI Reminder",
+    morning_gluco_body: "Hi there, it's time for your morning glucose check. 🌞",
+    noon_gluco_body: "Friendly reminder to complete your midday glucose check. 🍽️",
+    hydration_title: "Hydration Reminder 💧",
+    hydration_body: "Staying hydrated is essential for processing glucose. Remember to drink a glass of water!",
   },
   fr: {
     dashboard: "Tableau de bord",
@@ -296,6 +301,11 @@ export const dict: Translations = {
     hour: "heure",
     day: "jour",
     days: "jours",
+    gluco_reminder_title: "Rappel GlucoTrack AI",
+    morning_gluco_body: "Bonjour, il est temps pour votre contrôle de glycémie du matin. 🌞",
+    noon_gluco_body: "Petit rappel amical pour effectuer votre contrôle de glycémie de la mi-journée. 🍽️",
+    hydration_title: "Rappel d'Hydratation 💧",
+    hydration_body: "Rester hydraté est essentiel pour traiter le glucose. N'oubliez pas de boire un verre d'eau !",
   },
   ar: {
     dashboard: "لوحة القيادة",
@@ -439,6 +449,11 @@ export const dict: Translations = {
     hour: "ساعة",
     day: "يوم",
     days: "أيام",
+    gluco_reminder_title: "تذكير GlucoTrack AI",
+    morning_gluco_body: "مرحبًا، حان وقت فحص الجلوكوز الصباحي. 🌞",
+    noon_gluco_body: "تذكير ودي لإكمال فحص الجلوكوز في منتصف اليوم. 🍽️",
+    hydration_title: "تذكير شرب الماء 💧",
+    hydration_body: "البقاء رطبًا ضروري لمعالجة الجلوكوز. تذكر أن تشرب كوبًا من الماء!",
   }
 };
 
