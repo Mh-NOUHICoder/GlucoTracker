@@ -102,10 +102,20 @@ export default function ProfilePage() {
       const localforage = (await import('localforage')).default;
       await localforage.removeItem(`readings_${user.id}`);
       
-      toast.success("Backup restored successfully!");
+      // Clear deleted/edited overlays so restored data shows correctly
+      localStorage.removeItem("deleted_readings");
+      localStorage.removeItem("edited_readings");
+      
+      toast.success("Backup restored successfully! Refreshing data...");
+      
+      // Refresh the page after a short delay to allow toast to display
+      setTimeout(() => window.location.reload(), 500);
     } catch (err: unknown) {
       toast.error("Restore failed: " + (err as Error).message);
     }
+    
+    // Reset file input
+    e.target.value = "";
   };
 
   if (!clerkLoaded) {

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useUser } from "@clerk/nextjs";
+import { toast } from "sonner";
 
 export default function ProfileSettingsPage() {
   const { t } = useI18n();
@@ -100,7 +101,7 @@ export default function ProfileSettingsPage() {
     localStorage.setItem("water_interval", waterInterval.toString());
     localStorage.setItem("inactivity_days", inactivityDays.toString());
 
-    alert(t("profile_updated"));
+    toast.success(t("profile_updated"));
   };
 
   const handleUpdateProfile = async () => {
@@ -111,9 +112,9 @@ export default function ProfileSettingsPage() {
         firstName,
         lastName
       });
-      alert(t("profile_updated"));
+      toast.success(t("profile_updated"));
     } catch {
-      alert(t("update_failed"));
+      toast.error(t("update_failed"));
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -126,9 +127,9 @@ export default function ProfileSettingsPage() {
       await user.setProfileImage({
         file: e.target.files[0]
       });
-      alert(t("profile_updated"));
+      toast.success(t("profile_updated"));
     } catch {
-      alert(t("photo_failed"));
+      toast.error(t("photo_failed"));
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -149,7 +150,7 @@ export default function ProfileSettingsPage() {
   const handleRangeSave = () => {
     localStorage.setItem("target_min", targetMin.toString());
     localStorage.setItem("target_max", targetMax.toString());
-    alert("Target ranges updated successfully.");
+    toast.success("Target ranges updated successfully.");
   };
 
   const clearAllLocalCaches = () => {
@@ -165,7 +166,8 @@ export default function ProfileSettingsPage() {
         }
       });
       
-      window.location.reload();
+      toast.success("Cleared local caches. Reloading...");
+      setTimeout(() => window.location.reload(), 300);
     }
   };
 
