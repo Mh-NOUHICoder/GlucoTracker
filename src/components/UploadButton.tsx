@@ -548,9 +548,9 @@ export default function UploadButton() {
                      <span className="text-xs font-medium text-medical-cyan">{t("saved_to_db")}</span>
                    </div>
                  ) : hasUnsavedAnalysis && !user ? (
-                   <div className="mt-3">
+                   <div className="mt-4">
                      <SignInButton mode="modal">
-                        <button className="px-5 py-2.5 bg-gradient-to-r from-medical-blue to-medical-cyan rounded-xl text-white font-medium hover:opacity-90 shadow-lg shadow-medical-blue/20 transition-all text-sm">
+                        <button className="px-4 py-2 sm:px-5 sm:py-2.5 bg-gradient-to-r from-medical-blue to-medical-cyan rounded-xl text-white font-medium hover:opacity-90 shadow-lg shadow-medical-blue/20 transition-all text-xs sm:text-sm">
                           {t("sign_in_to_save")}
                         </button>
                      </SignInButton>

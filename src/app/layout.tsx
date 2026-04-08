@@ -14,8 +14,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "GlucoTrack AI",
-  description: "Modern PWA for diabetes tracking",
+  title: "GlucoTrack - Intelligent Care",
+  description: "Monitor and analyze your glucose trends securely.",
   manifest: "/manifest.json",
   icons: {
     icon: "/glucotracker.png",

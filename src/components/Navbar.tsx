@@ -99,7 +99,7 @@ export default function Navbar() {
                 <Activity className="h-7 w-7 text-medical-cyan relative z-10" />
               </div>
               <span className="font-black text-xl md:text-2xl tracking-tighter text-white">
-                Gluco<span className="text-medical-cyan">Track</span> AI
+                Gluco<span className="text-medical-cyan">Track</span>
               </span>
             </Link>
 
@@ -133,15 +133,15 @@ export default function Navbar() {
             </div>
 
             {/* Actions: Lang, Profile */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <LanguageSwitcher />
               
-              <div className="h-8 w-[1px] bg-white/10 mx-1 hidden sm:block" />
+              <div className="h-8 w-[1px] bg-white/10 mx-0.5 sm:mx-1 hidden sm:block" />
 
               {!isLoaded ? (
-                <div className="w-10 h-10 rounded-full bg-white/5 animate-pulse" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 animate-pulse" />
               ) : isSignedIn ? (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -157,12 +157,12 @@ export default function Navbar() {
                       whileTap={{ scale: 0.95 }}
                       className="relative group p-0.5 rounded-full border-2 border-white/10 hover:border-medical-cyan transition-all duration-300"
                     >
-                      <div className="w-9 h-9 md:w-10 md:h-10 rounded-full overflow-hidden">
+                      <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden">
                         {user?.imageUrl ? (
                           <Image src={user.imageUrl} alt="Profile" width={40} height={40} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-medical-dark flex items-center justify-center text-medical-cyan">
-                            <User className="w-5 h-5" />
+                            <User className="w-4 h-4 sm:w-5 sm:h-5" />
                           </div>
                         )}
                       </div>
@@ -175,7 +175,7 @@ export default function Navbar() {
                   <motion.button 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-medical-blue to-medical-cyan text-white text-sm font-bold shadow-lg shadow-medical-cyan/20 hover:shadow-medical-cyan/40 transition-all border border-white/10"
+                    className="px-3 py-1.5 sm:px-6 sm:py-2.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-medical-blue to-medical-cyan text-white text-[11px] sm:text-sm font-bold shadow-lg shadow-medical-cyan/20 hover:shadow-medical-cyan/40 transition-all border border-white/10 whitespace-nowrap"
                   >
                     {t("sign_in_save")}
                   </motion.button>

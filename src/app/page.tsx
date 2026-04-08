@@ -3,8 +3,10 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Activity, ShieldCheck, Zap } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 export default function Home() {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh]">
       <motion.div
@@ -23,15 +25,15 @@ export default function Home() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-medical-cyan opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-medical-cyan"></span>
           </span>
-          <span className="text-xs font-medium tracking-wide uppercase">AI-Powered Tracking</span>
+          <span className="text-xs font-medium tracking-wide uppercase">{t("ai_powered_tracking")}</span>
         </motion.div>
         
         <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-white">
-          Intelligent <span className="text-transparent bg-clip-text bg-gradient-to-r from-medical-blue-light to-medical-cyan">Diabetes</span> Care
+          {t("intelligent")}<span className="text-transparent bg-clip-text bg-gradient-to-r from-medical-blue-light to-medical-cyan">{t("diabetes_care")}</span>
         </h1>
         
         <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-          Monitor your glucose levels effortlessly using advanced AI image recognition. Just valid insights, zero friction.
+          {t("landing_subtitle")}
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
@@ -41,7 +43,7 @@ export default function Home() {
               whileTap={{ scale: 0.95 }}
               className="px-8 py-4 rounded-full bg-gradient-to-r from-medical-blue to-medical-cyan text-white font-medium flex items-center justify-center gap-2 shadow-lg shadow-medical-blue/25 w-full sm:w-auto"
             >
-              Open Dashboard <ArrowRight className="w-5 h-5" />
+              {t("open_dashboard")} <ArrowRight className="w-5 h-5" />
             </motion.div>
           </Link>
           <Link href="/upload">
@@ -50,7 +52,7 @@ export default function Home() {
               whileTap={{ scale: 0.95 }}
               className="px-8 py-4 rounded-full border border-medical-blue/30 bg-medical-dark/50 text-white font-medium flex items-center justify-center hover:bg-medical-blue/10 transition-colors w-full sm:w-auto"
             >
-              Scan Reading
+              {t("scan_reading")}
             </motion.div>
           </Link>
         </div>
@@ -63,9 +65,9 @@ export default function Home() {
         className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mt-24"
       >
         {[
-          { icon: Zap, title: "Instant Extraction", desc: "Our AI reads your meter display instantly from photos." },
-          { icon: Activity, title: "Smart Trends", desc: "Visualize patterns and predict potential hypo/hyperglycemic events." },
-          { icon: ShieldCheck, title: "Secure & Private", desc: "Your health data is encrypted and completely under your control." },
+          { icon: Zap, title: t("instant_extraction"), desc: t("instant_extraction_desc") },
+          { icon: Activity, title: t("smart_trends"), desc: t("smart_trends_desc") },
+          { icon: ShieldCheck, title: t("secure_private"), desc: t("secure_private_desc") },
         ].map((feature, i) => (
           <div key={i} className="p-6 rounded-2xl border border-medical-blue/10 bg-medical-dark/40 backdrop-blur-sm">
             <feature.icon className="w-8 h-8 text-medical-cyan mb-4" />

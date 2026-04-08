@@ -439,13 +439,15 @@ export default function ProfileSettingsPage() {
             {/* Reminders Section */}
             {activeTab === "alerts" && (
               <div className="bg-medical-dark/40 border border-white/5 p-8 rounded-3xl space-y-10 shadow-xl backdrop-blur-md">
-                <div className="flex items-center gap-4">
-                  <div className="p-4 rounded-3xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                    <Bell className="w-8 h-8" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-black text-white">{t("smart_reminders")}</h3>
-                    <p className="text-sm text-gray-500 font-medium">{t("manage_notifications")}</p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
+                  <div className="flex items-center gap-4">
+                    <div className="p-4 rounded-3xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                      <Bell className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl sm:text-2xl font-black text-white">{t("smart_reminders")}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 font-medium">{t("manage_notifications")}</p>
+                    </div>
                   </div>
                   <button 
                      onClick={() => {
@@ -490,7 +492,7 @@ export default function ProfileSettingsPage() {
                          }
                        }
                      }}
-                     className="ml-auto px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+                     className="sm:mx-0 w-full sm:w-auto px-4 py-3 sm:py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
                   >
                      <Bell className="w-4 h-4" />
                      Test
