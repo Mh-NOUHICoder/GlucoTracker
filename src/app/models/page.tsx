@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -15,9 +16,9 @@ import {
   Database,
   Camera,
   Loader2,
-  BarChart3,
-  TrendingUp,
-  AlertCircle
+  Bell,
+  Clock,
+  Droplet
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useUser } from "@clerk/nextjs";
@@ -40,6 +41,12 @@ export default function ProfileSettingsPage() {
   const [lastName, setLastName] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [notifyGlucose, setNotifyGlucose] = useState(false);
+  const [morningTime, setMorningTime] = useState("08:00");
+  const [noonTime, setNoonTime] = useState("12:00");
+  const [notifyWater, setNotifyWater] = useState(false);
+  const [waterInterval, setWaterInterval] = useState(1);
+  const [inactivityDays, setInactivityDays] = useState(2);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -69,7 +76,32 @@ export default function ProfileSettingsPage() {
     setUnit(localStorage.getItem("glucose_unit") || "mg/dL");
     setTargetMin(Number(localStorage.getItem("target_min") || 70));
     setTargetMax(Number(localStorage.getItem("target_max") || 180));
+
+    // Load Reminders
+    setNotifyGlucose(localStorage.getItem("notify_glucose") === "true");
+    setMorningTime(localStorage.getItem("morning_time") || "08:00");
+    setNoonTime(localStorage.getItem("noon_time") || "12:00");
+    setNotifyWater(localStorage.getItem("notify_water") === "true");
+    setWaterInterval(Number(localStorage.getItem("water_interval") || 1));
+    setInactivityDays(Number(localStorage.getItem("inactivity_days") || 2));
   }, []);
+
+  const handleSaveSettings = () => {
+    localStorage.setItem("glucose_unit", unit);
+    localStorage.setItem("target_min", targetMin.toString());
+    localStorage.setItem("target_max", targetMax.toString());
+    if (selectedModelId) localStorage.setItem("preferredModelId", selectedModelId);
+
+    // Save Reminders
+    localStorage.setItem("notify_glucose", notifyGlucose.toString());
+    localStorage.setItem("morning_time", morningTime);
+    localStorage.setItem("noon_time", noonTime);
+    localStorage.setItem("notify_water", notifyWater.toString());
+    localStorage.setItem("water_interval", waterInterval.toString());
+    localStorage.setItem("inactivity_days", inactivityDays.toString());
+
+    alert(t("profile_updated"));
+  };
 
   const handleUpdateProfile = async () => {
     if (!user) return;
@@ -80,8 +112,8 @@ export default function ProfileSettingsPage() {
         lastName
       });
       alert(t("profile_updated"));
-    } catch (err: any) {
-      alert("Update failed: " + err.message);
+    } catch {
+      alert(t("update_failed"));
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -95,8 +127,8 @@ export default function ProfileSettingsPage() {
         file: e.target.files[0]
       });
       alert(t("profile_updated"));
-    } catch (err: any) {
-      alert("Photo upload failed: " + err.message);
+    } catch {
+      alert(t("photo_failed"));
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -161,6 +193,7 @@ export default function ProfileSettingsPage() {
           { id: "profile", label: t("profile") },
           { id: "general", label: t("units") },
           { id: "ai", label: t("ai_engine") },
+          { id: "alerts", label: t("reminders") },
           { id: "data", label: t("data_manage") }
         ].map((tab) => (
           <button
@@ -198,7 +231,7 @@ export default function ProfileSettingsPage() {
                     <div className="relative group">
                        <div className="w-32 h-32 rounded-full border-4 border-medical-cyan/20 overflow-hidden shadow-2xl bg-medical-black">
                           {user?.imageUrl ? (
-                             <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
+                             <Image src={user.imageUrl} alt="Profile" width={128} height={128} className="w-full h-full object-cover" />
                           ) : (
                              <div className="w-full h-full flex items-center justify-center">
                                 <User className="w-12 h-12 text-gray-700" />
@@ -256,9 +289,9 @@ export default function ProfileSettingsPage() {
                             {t("save_changes")}
                          </button>
                        </div>
-                    </div>
-                 </div>
-              </div>
+                     </div>
+                  </div>
+               </div>
             )}
   
             {/* General Section */}
@@ -274,8 +307,8 @@ export default function ProfileSettingsPage() {
                         <p className="text-xs text-gray-500 font-medium">{t("choose_preferred_unit")}</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      {["mg/dL", "mmol/L"].map((u) => (
+                    <div className="grid grid-cols-3 gap-3">
+                      {["mg/dL", "mmol/L", "g/L"].map((u) => (
                         <button
                           key={u}
                           onClick={() => handleUnitToggle(u)}
@@ -378,6 +411,125 @@ export default function ProfileSettingsPage() {
                       </div>
                     )}
                   </div>
+              </div>
+            )}
+  
+            {/* Reminders Section */}
+            {activeTab === "alerts" && (
+              <div className="bg-medical-dark/40 border border-white/5 p-8 rounded-3xl space-y-10 shadow-xl backdrop-blur-md">
+                <div className="flex items-center gap-4">
+                  <div className="p-4 rounded-3xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    <Bell className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-white">{t("smart_reminders")}</h3>
+                    <p className="text-sm text-gray-500 font-medium">{t("manage_notifications")}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-8">
+                  {/* Glucose Alerts */}
+                  <div className="p-6 rounded-3xl bg-white/5 border border-white/5 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="text-lg font-bold text-white mb-1">{t("glucose_check_alert")}</div>
+                        <div className="flex items-center gap-3 bg-medical-black/50 px-3 py-1.5 rounded-xl border border-white/5">
+                           <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{t("remind_every")}</span>
+                           <select 
+                              value={inactivityDays} 
+                              onChange={(e) => setInactivityDays(Number(e.target.value))}
+                              className="bg-transparent text-medical-cyan font-black text-xs outline-none cursor-pointer"
+                           >
+                              <option value={1}>1 {t("day")}</option>
+                              <option value={2}>2 {t("days") || "days"}</option>
+                              <option value={3}>3 {t("days") || "days"}</option>
+                              <option value={7}>7 {t("days") || "days"}</option>
+                           </select>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer group">
+                        <input type="checkbox" checked={notifyGlucose} onChange={(e) => setNotifyGlucose(e.target.checked)} className="sr-only peer" />
+                        <div className="w-14 h-7 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-gray-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-medical-cyan/30 peer-checked:after:bg-medical-cyan shadow-inner"></div>
+                      </label>
+                    </div>
+
+                    {notifyGlucose && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/5"
+                      >
+                        <div className="space-y-2">
+                           <label className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                             <Clock className="w-4 h-4 text-medical-cyan" /> {t("morning_alert")}
+                           </label>
+                           <input 
+                             type="time" 
+                             value={morningTime} 
+                             onChange={(e) => setMorningTime(e.target.value)}
+                             className="w-full bg-medical-black border border-white/5 rounded-2xl px-6 py-4 text-white font-bold focus:border-medical-cyan outline-none transition-all"
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                             <Clock className="w-4 h-4 text-medical-cyan" /> {t("noon_alert")}
+                           </label>
+                           <input 
+                             type="time" 
+                             value={noonTime} 
+                             onChange={(e) => setNoonTime(e.target.value)}
+                             className="w-full bg-medical-black border border-white/5 rounded-2xl px-6 py-4 text-white font-bold focus:border-medical-cyan outline-none transition-all"
+                           />
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Hydration Alerts */}
+                  <div className="p-6 rounded-3xl bg-white/5 border border-white/5 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="text-lg font-bold text-white flex items-center gap-3">
+                          <Droplet className="w-6 h-6 text-blue-400" /> {t("hydration_reminder")}
+                        </div>
+                        <div className="text-sm text-gray-500">{t("hydration_desc")}</div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer group">
+                        <input type="checkbox" checked={notifyWater} onChange={(e) => setNotifyWater(e.target.checked)} className="sr-only peer" />
+                        <div className="w-14 h-7 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-gray-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500/30 peer-checked:after:bg-blue-400 shadow-inner"></div>
+                      </label>
+                    </div>
+
+                    {notifyWater && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        className="flex items-center gap-4 bg-medical-black/80 p-6 rounded-2xl border border-white/5"
+                      >
+                        <span className="text-sm font-black text-gray-400 uppercase tracking-widest">{t("remind_every")}</span>
+                        <select 
+                           value={waterInterval} 
+                           onChange={(e) => setWaterInterval(Number(e.target.value))}
+                           className="bg-medical-dark border border-white/10 rounded-xl px-4 py-2 text-white font-black text-sm outline-none focus:border-blue-400 transition-all"
+                        >
+                           <option value={1}>1 {t("hour")}</option>
+                           <option value={2}>2 {t("hours") || "hours"}</option>
+                           <option value={3}>3 {t("hours") || "hours"}</option>
+                           <option value={4}>4 {t("hours") || "hours"}</option>
+                        </select>
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-white/5">
+                  <button 
+                    onClick={handleSaveSettings}
+                    className="px-10 py-5 bg-gradient-to-r from-medical-blue to-medical-cyan rounded-2xl text-white font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-medical-cyan/20 active:scale-95"
+                  >
+                     {t("save_changes")}
+                  </button>
+                </div>
               </div>
             )}
   

@@ -1,7 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useI18n } from "@/lib/i18n";
 
 interface Reading {
   id: string;
@@ -21,6 +22,8 @@ interface GoldChartProps {
 export default function GlucoseTrendChart({ data, unit = "mg/dL", targetMin = 70, targetMax = 180, hideTooltips = false, isLight = false }: GoldChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const { dir } = useI18n();
+  const isRTL = dir === "rtl";
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -38,6 +41,12 @@ export default function GlucoseTrendChart({ data, unit = "mg/dL", targetMin = 70
   const chartHeight = height - paddingY * 2;
 
   // Process data
+  const formatValue = useCallback((val: number) => {
+     if (unit === "mmol/L") return Number((val / 18.0182).toFixed(1));
+     if (unit === "g/L") return Number((val / 100).toFixed(2));
+     return val;
+  }, [unit]);
+
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
     
@@ -45,22 +54,25 @@ export default function GlucoseTrendChart({ data, unit = "mg/dL", targetMin = 70
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
       .slice(-100);
 
-    const values = sorted.map(d => {
-        const raw = Number(d.value);
-        return unit === "mmol/L" ? Number((raw / 18.0182).toFixed(1)) : raw;
-    });
+    const values = sorted.map(d => formatValue(Number(d.value)));
 
-    const maxVal = Math.max(...values, unit === "mmol/L" ? 12 : 200) + (unit === "mmol/L" ? 1 : 20);
-    const minVal = Math.max(0, Math.min(...values, unit === "mmol/L" ? 2 : 40) - (unit === "mmol/L" ? 1 : 20));
+    const baseMax = unit === "mmol/L" ? 12 : unit === "g/L" ? 2.0 : 200;
+    const padMax = unit === "mmol/L" ? 1 : unit === "g/L" ? 0.2 : 20;
+    const baseMin = unit === "mmol/L" ? 2 : unit === "g/L" ? 0.4 : 40;
+    const padMin = unit === "mmol/L" ? 1 : unit === "g/L" ? 0.2 : 20;
+
+    const maxVal = Math.max(...values, baseMax) + padMax;
+    const minVal = Math.max(0, Math.min(...values, baseMin) - padMin);
     const range = maxVal - minVal;
 
     return sorted.map((d, i) => {
-      const val = unit === "mmol/L" ? Number((Number(d.value) / 18.0182).toFixed(1)) : Number(d.value);
-      const x = paddingX + (i / (sorted.length - 1 || 1)) * chartWidth;
+      const val = formatValue(Number(d.value));
+      const rawX = (i / (sorted.length - 1 || 1)) * chartWidth;
+      const x = isRTL ? paddingX + chartWidth - rawX : paddingX + rawX;
       const y = paddingY + chartHeight - ((val - minVal) / (range || 1)) * chartHeight;
       return { ...d, x, y, value: val };
     });
-  }, [data, chartWidth, chartHeight, paddingX, paddingY, unit]);
+  }, [data, chartWidth, chartHeight, paddingX, paddingY, unit, formatValue, isRTL]);
 
   const linePath = useMemo(() => {
     if (chartData.length < 2) return "";
@@ -83,8 +95,8 @@ export default function GlucoseTrendChart({ data, unit = "mg/dL", targetMin = 70
 
   if (chartData.length === 0) return null;
 
-  const displayTargetMin = unit === "mmol/L" ? Number((targetMin / 18.0182).toFixed(1)) : targetMin;
-  const displayTargetMax = unit === "mmol/L" ? Number((targetMax / 18.0182).toFixed(1)) : targetMax;
+  const displayTargetMin = formatValue(targetMin);
+  const displayTargetMax = formatValue(targetMax);
 
   return (
     <div className="relative w-full min-h-[450px] md:min-h-[400px] flex items-center justify-center overflow-hidden">
@@ -114,10 +126,15 @@ export default function GlucoseTrendChart({ data, unit = "mg/dL", targetMin = 70
         </defs>
 
         {/* Dynamic Grid Lines */}
-        {[displayTargetMin, (displayTargetMin + displayTargetMax) / 2, displayTargetMax].map((v, i) => {
+        {[displayTargetMin, Number(((displayTargetMin + displayTargetMax) / 2).toFixed(unit === "g/L" ? 2 : 1)), displayTargetMax].map((v, i) => {
             const values = chartData.map(d => d.value);
-            const maxVal = Math.max(...values, unit === "mmol/L" ? 12 : 200) + (unit === "mmol/L" ? 1 : 20);
-            const minVal = Math.max(0, Math.min(...values, unit === "mmol/L" ? 2 : 40) - (unit === "mmol/L" ? 1 : 20));
+            const baseMax = unit === "mmol/L" ? 12 : unit === "g/L" ? 2.0 : 200;
+            const padMax = unit === "mmol/L" ? 1 : unit === "g/L" ? 0.2 : 20;
+            const baseMin = unit === "mmol/L" ? 2 : unit === "g/L" ? 0.4 : 40;
+            const padMin = unit === "mmol/L" ? 1 : unit === "g/L" ? 0.2 : 20;
+
+            const maxVal = Math.max(...values, baseMax) + padMax;
+            const minVal = Math.max(0, Math.min(...values, baseMin) - padMin);
             const range = maxVal - minVal;
             const y = paddingY + chartHeight - ((v - minVal) / (range || 1)) * chartHeight;
             if (y < paddingY || y > height - paddingY) return null;
@@ -132,10 +149,10 @@ export default function GlucoseTrendChart({ data, unit = "mg/dL", targetMin = 70
                         strokeDasharray={isBound ? "8 6" : ""}
                     />
                     <text 
-                        x={paddingX - 12} y={y + 6} 
+                        x={isRTL ? width - paddingX + 12 : paddingX - 12} y={y + 6} 
                         className="font-bold fill-gray-500"
                         style={{ fontSize: isMobile ? '20px' : '15px' }}
-                        textAnchor="end"
+                        textAnchor={isRTL ? "start" : "end"}
                     >
                         {v}
                     </text>

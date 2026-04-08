@@ -1,27 +1,55 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { History as HistoryIcon, Clock, Filter, Activity, Calendar, Droplet, Trash2, Pencil, Check, X, AlertCircle } from "lucide-react";
+import { History as HistoryIcon, Clock, Activity, Calendar, Trash2, Pencil, Check, X, AlertCircle } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
+import localforage from "localforage";
+import { toast } from "sonner";
+
+type GlucoseReading = {
+  id: string;
+  value: number | string;
+  created_at: string;
+  source?: string;
+  [key: string]: unknown;
+};
 
 export default function HistoryPage() {
   const { user, isLoaded } = useUser();
-  const [readings, setReadings] = useState<any[]>([]);
+  const [readings, setReadings] = useState<GlucoseReading[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [unit, setUnit] = useState("mg/dL");
   const { t } = useI18n();
 
-  async function fetchHistory() {
+  useEffect(() => {
+    setUnit(localStorage.getItem("glucose_unit") || "mg/dL");
+  }, []);
+
+  const formatValue = (val: number) => {
+     if (unit === "mmol/L") return (val / 18.0182).toFixed(1);
+     if (unit === "g/L") return (val / 100).toFixed(2);
+     return val.toString();
+  };
+
+  const fetchHistory = useCallback(async () => {
     if (!user) {
       setLoading(false);
       return;
     }
     
     try {
+      // Offline-first: load instantly from cache
+      const cached = await localforage.getItem(`readings_${user.id}`);
+      if (cached) {
+        setReadings(cached as GlucoseReading[]);
+        setLoading(false);
+      }
+
       const { data, error } = await supabase
         .from("glucose_readings")
         .select("*")
@@ -37,27 +65,28 @@ export default function HistoryPage() {
         const editedStr = localStorage.getItem("edited_readings") || "{}";
         const editedMap = JSON.parse(editedStr);
 
-        const transformedData = data
-          .filter((r: any) => !deletedIds.includes(r.id))
-          .map((r: any) => ({
+        const transformedData: GlucoseReading[] = data
+          .filter((r: { id: string }) => !deletedIds.includes(r.id))
+          .map((r: GlucoseReading) => ({
             ...r,
             value: editedMap[r.id] !== undefined ? editedMap[r.id] : r.value
           }));
 
         setReadings(transformedData);
+        await localforage.setItem(`readings_${user.id}`, transformedData);
       }
     } catch (err) {
-      console.error(err);
+      console.error(err as Error);
     } finally {
       setLoading(false);
     }
-  }
+  }, [user]);
 
   useEffect(() => {
     if (isLoaded) {
       fetchHistory();
     }
-  }, [user, isLoaded]);
+  }, [isLoaded, fetchHistory]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm(t("delete_confirm"))) return;
@@ -72,7 +101,9 @@ export default function HistoryPage() {
       }
 
       setReadings(prev => prev.filter(r => r.id !== id));
-    } catch (err: any) {
+      toast.success("Reading deleted from history");
+    } catch (err) {
+      toast.error("Failed to delete reading");
       console.error("Virtual delete failed:", err);
     }
   };
@@ -83,8 +114,15 @@ export default function HistoryPage() {
   };
 
   const handleUpdate = async (id: string) => {
-    const val = parseFloat(editValue);
-    if (isNaN(val)) return alert("Invalid number");
+    let val = parseFloat(editValue);
+    if (isNaN(val)) return toast.error("Invalid number");
+
+    // Normalize back to mg/dL before saving
+    if (unit === "mmol/L") val = val * 18.0182;
+    if (unit === "g/L") val = val * 100;
+    
+    // Round to precision to avoid float issues
+    val = Math.round(val);
 
     try {
       // Save to Virtual Edit Overlay
@@ -96,8 +134,9 @@ export default function HistoryPage() {
       // Update local state
       setReadings(prev => prev.map(r => r.id === id ? { ...r, value: val } : r));
       setEditingId(null);
-      console.log("Virtual update successful for ID:", id);
-    } catch (err: any) {
+      toast.success("Reading successfully updated");
+    } catch (err) {
+      toast.error("Failed to update reading");
       console.error("Virtual update failed:", err);
     }
   };
@@ -141,7 +180,7 @@ export default function HistoryPage() {
       ) : (
         <div className="space-y-4">
           <AnimatePresence mode='popLayout'>
-            {readings.map((reading, index) => {
+            {readings.map((reading) => {
               const val = Number(reading.value);
               const isHigh = val > 180;
               const isLow = val < 70;
@@ -179,7 +218,7 @@ export default function HistoryPage() {
                           </div>
                         ) : (
                           <h3 className="text-white font-black text-2xl tracking-tight">
-                            {reading.value} <span className="text-sm text-gray-500 font-bold ml-1">{reading.notes || "mg/dL"}</span>
+                            {formatValue(val)} <span className="text-sm text-gray-500 font-bold ml-1">{unit}</span>
                           </h3>
                         )}
                         <div className="flex items-center gap-3 text-[10px] md:text-xs text-gray-500 mt-1 font-medium flex-wrap">

@@ -1,11 +1,14 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Camera, Image as ImageIcon, X, Zap, Loader2, CheckCircle } from "lucide-react";
+import Image from "next/image";
+import { Camera, Image as ImageIcon, X, Zap, Loader2, CheckCircle, Edit, Droplets } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import { useI18n } from "@/lib/i18n";
+import { toast } from "sonner";
+import localforage from "localforage";
 
 // Helper function to resize image file or video stream to avoid Payload Too Large
 const resizeImage = (source: HTMLImageElement | HTMLVideoElement, width: number, height: number): string => {
@@ -78,7 +81,7 @@ export default function UploadButton() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         const resizedBase64 = resizeImage(img, img.width, img.height);
         setPreviewImage(resizedBase64);
@@ -95,7 +98,7 @@ export default function UploadButton() {
     }
   }, [isCameraActive, stream]);
 
-  const startCamera = async () => {
+  const startCamera = useCallback(async () => {
     try {
       // First attempt: explicitly request back camera for mobile devices
       const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -118,10 +121,10 @@ export default function UploadButton() {
         setAnalysisResult(null);
       } catch (fallbackErr) {
         console.error("Error accessing any camera:", fallbackErr);
-        alert("Could not access camera. Please check your browser permissions.");
+        toast.error("Could not access camera. Please check your browser permissions.");
       }
     }
-  };
+  }, []);
 
   const stopCamera = useCallback(() => {
     if (stream) {
@@ -184,7 +187,7 @@ export default function UploadButton() {
       
       try {
         data = JSON.parse(textData);
-      } catch (parseErr) {
+      } catch {
         throw new Error("Server returned an invalid JSON response.");
       }
       
@@ -195,23 +198,30 @@ export default function UploadButton() {
       setAnalysisResult(data.data);
       handleSave(data.data.value, data.data.unit);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       // If AI fails, offer manual entry
       setIsManualEntry(true);
-      alert("AI Analysis is temporarily unavailable (Quota reached). Please enter your reading manually below.");
+      toast.error(t("ai_error_manual"));
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   const handleManualSubmit = () => {
-    const val = parseFloat(manualValue);
-    if (isNaN(val)) return alert("Please enter a valid number");
+    let val = parseFloat(manualValue);
+    if (isNaN(val)) return toast.error(t("invalid_number"));
     
-    const result = { value: val, unit: manualUnit };
+    let unit = manualUnit;
+    // Normalize g/L to mg/dL
+    if (unit === "g/L") {
+       val = val * 100;
+       unit = "mg/dL";
+    }
+
+    const result = { value: val, unit: unit };
     setAnalysisResult(result);
-    handleSave(val, manualUnit);
+    handleSave(val, unit);
     setIsManualEntry(false);
   };
 
@@ -228,6 +238,13 @@ export default function UploadButton() {
         if (!sbError) {
           setIsSaved(true);
           setHasUnsavedAnalysis(false);
+          // Invalidate dashboard caches to ensure fresh AI analysis and chart data
+          if (user) {
+            const timeRanges = ["7d", "1m", "3m", "1y", "all"];
+            for (const range of timeRanges) {
+              await localforage.removeItem(`dashboard_readings_${user.id}_${range}`);
+            }
+          }
         }
       } catch (sbErr) {
         console.error("Supabase Exception:", sbErr);
@@ -254,13 +271,13 @@ export default function UploadButton() {
             initial={{ opacity: 0, scale: 0.95 }} 
             animate={{ opacity: 1, scale: 1 }} 
             exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full flex-col gap-4"
+            className="w-full flex flex-col gap-4"
           >
             <motion.button
               onClick={startCamera}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="relative group w-full aspect-[4/3] rounded-3xl overflow-hidden border border-medical-cyan/40 bg-medical-dark/80 p-8 flex flex-col items-center justify-center gap-4 shadow-[0_0_40px_-15px_rgba(6,182,212,0.3)] backdrop-blur-md transition-all hover:border-medical-cyan hover:shadow-[0_0_50px_-10px_rgba(6,182,212,0.4)] mb-4"
+              className="relative group w-full aspect-[4/3] md:aspect-video rounded-3xl overflow-hidden border border-medical-cyan/40 bg-medical-dark/80 p-6 md:p-12 flex flex-col items-center justify-center gap-4 shadow-[0_0_40px_-15px_rgba(6,182,212,0.3)] backdrop-blur-md transition-all hover:border-medical-cyan hover:shadow-[0_0_50px_-10px_rgba(6,182,212,0.4)] mb-2"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-medical-cyan/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               
@@ -278,12 +295,116 @@ export default function UploadButton() {
               onClick={() => fileInputRef.current?.click()}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full py-4 rounded-xl border border-medical-blue/30 bg-medical-dark/50 flex items-center justify-center gap-3 text-gray-300 hover:text-white hover:bg-medical-blue/10 transition-colors"
+              className="w-full py-4 rounded-xl border border-medical-blue/30 bg-medical-dark/50 flex items-center justify-center gap-3 text-gray-300 hover:text-white hover:bg-medical-blue/10 transition-colors mb-3"
             >
               <ImageIcon className="w-5 h-5 text-medical-blue-light" />
               <span className="font-medium">{t("upload_gallery")}</span>
             </motion.button>
+
+            <motion.button
+              onClick={() => setIsManualEntry(true)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-4 rounded-xl border border-medical-cyan/20 bg-medical-cyan/5 flex items-center justify-center gap-3 text-medical-cyan hover:text-white hover:bg-medical-cyan/10 transition-colors"
+            >
+              <Edit className="w-5 h-5" />
+              <span className="font-medium">{t("enter_manually")}</span>
+            </motion.button>
           </motion.div>
+        )}
+
+        {isManualEntry && !previewImage && !analysisResult && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsManualEntry(false)}
+              className="absolute inset-0 bg-medical-black/90 backdrop-blur-xl"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8, y: 100 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 100 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              className="relative w-full max-w-md p-6 sm:p-10 rounded-[3rem] bg-gradient-to-b from-medical-dark/95 to-medical-black border border-white/10 shadow-[0_20px_80px_rgba(0,0,0,0.8)] flex flex-col items-center"
+            >
+              <div className="absolute inset-0 bg-gradient-to-tr from-medical-cyan/5 via-transparent to-medical-blue/5 rounded-[3rem] pointer-events-none" />
+              
+              <div className="relative mb-8">
+                <div className="absolute inset-0 bg-medical-cyan/20 blur-2xl rounded-full" />
+                <div className="relative w-20 h-20 rounded-[2rem] bg-gradient-to-br from-medical-cyan to-medical-blue p-[1px]">
+                  <div className="w-full h-full rounded-[2rem] bg-medical-dark flex items-center justify-center">
+                    <Droplets className="w-10 h-10 text-medical-cyan" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-center space-y-2 mb-10 w-full px-4">
+                <h3 className="text-3xl font-black text-white tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-medical-cyan/50 break-words line-clamp-2">
+                  {t("manual_entry_title")}
+                </h3>
+                <p className="text-medical-cyan/50 font-bold uppercase tracking-[0.2em] text-[10px]">
+                  {t("enter_manually_desc")}
+                </p>
+              </div>
+
+              <div className="w-full space-y-8 mb-10">
+                <div className="relative group">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-medical-cyan/20 to-medical-blue/20 rounded-3xl blur opacity-0 group-focus-within:opacity-100 transition duration-500" />
+                  <input 
+                    type="number" 
+                    value={manualValue} 
+                    onChange={(e) => setManualValue(e.target.value)}
+                    placeholder="120"
+                    autoFocus
+                    className="relative w-full h-24 bg-medical-black/80 border border-white/10 rounded-[2rem] px-8 text-white font-black text-5xl text-center focus:outline-none focus:border-medical-cyan/50 transition-all placeholder:text-white/10 shadow-inner"
+                  />
+                </div>
+
+                {/* Modern Segmented Unit Selector */}
+                <div className="bg-medical-black/60 p-1.5 rounded-2xl border border-white/5 flex gap-1 relative overflow-hidden">
+                  {["mg/dL", "mmol/L", "g/L"].map((u) => (
+                    <button
+                      key={u}
+                      onClick={() => setManualUnit(u)}
+                      className="relative flex-1 py-3 rounded-xl transition-all duration-300 z-10"
+                    >
+                      {manualUnit === u && (
+                        <motion.div
+                          layoutId="activeUnit"
+                          className="absolute inset-0 bg-gradient-to-r from-medical-blue to-medical-cyan shadow-[0_0_15px_rgba(6,182,212,0.4)] rounded-xl"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                      <span className={`relative z-20 text-[10px] font-black uppercase tracking-[0.2em] transition-colors duration-300 ${
+                        manualUnit === u ? "text-white" : "text-gray-500 hover:text-gray-300"
+                      }`}>
+                        {u}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col w-full gap-4">
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleManualSubmit}
+                  className="w-full py-5 bg-gradient-to-r from-medical-blue to-medical-cyan text-white font-black uppercase tracking-widest text-sm rounded-2xl shadow-[0_10px_30px_rgba(6,182,212,0.3)] hover:shadow-medical-cyan/40 transition-all"
+                >
+                  {t("save_reading")}
+                </motion.button>
+                <button 
+                  onClick={() => setIsManualEntry(false)} 
+                  className="w-full py-2 text-gray-500 hover:text-white font-black uppercase tracking-widest text-[10px] transition-colors"
+                >
+                  {t("cancel")}
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
 
         {isCameraActive && (
@@ -337,10 +458,13 @@ export default function UploadButton() {
             className="w-full space-y-6"
           >
             <div className="relative aspect-[4/3] rounded-3xl overflow-hidden border border-medical-blue/30 shadow-2xl bg-black group">
-              <img 
+              <Image 
                 src={previewImage} 
                 alt={t("captured_reading")} 
+                width={800}
+                height={600}
                 className={`w-full h-full object-contain transition-all ${isAnalyzing || isManualEntry ? 'brightness-50 blur-sm' : ''}`}
+                unoptimized
               />
               {!isAnalyzing && !isManualEntry && (
                 <button 
@@ -358,7 +482,7 @@ export default function UploadButton() {
               )}
               {isManualEntry && (
                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
-                    <h4 className="text-white font-bold mb-4">AI Limit Reached - Manual Entry</h4>
+                    <h4 className="text-white font-bold mb-4">{t("ai_limit_manual")}</h4>
                     <div className="flex gap-4 mb-6">
                        <input 
                          type="number" 
@@ -374,15 +498,16 @@ export default function UploadButton() {
                        >
                           <option value="mg/dL">mg/dL</option>
                           <option value="mmol/L">mmol/L</option>
+                          <option value="g/L">g/L</option>
                        </select>
                     </div>
                     <button 
                       onClick={handleManualSubmit}
                       className="px-8 py-3 bg-medical-cyan text-white font-bold rounded-xl shadow-lg hover:bg-medical-accent transition-colors"
                     >
-                      Save Reading
+                      {t("save_reading")}
                     </button>
-                    <button onClick={() => setIsManualEntry(false)} className="mt-4 text-xs text-gray-400 hover:text-white underline italic">Cancel</button>
+                    <button onClick={() => setIsManualEntry(false)} className="mt-4 text-xs text-gray-400 hover:text-white underline italic">{t("cancel")}</button>
                  </div>
               )}
             </div>
@@ -426,13 +551,13 @@ export default function UploadButton() {
                    <div className="mt-3">
                      <SignInButton mode="modal">
                         <button className="px-5 py-2.5 bg-gradient-to-r from-medical-blue to-medical-cyan rounded-xl text-white font-medium hover:opacity-90 shadow-lg shadow-medical-blue/20 transition-all text-sm">
-                          Sign in to Save
+                          {t("sign_in_to_save")}
                         </button>
                      </SignInButton>
                    </div>
                  ) : null}
 
-                 <button onClick={resetCapture} className="mt-5 text-sm text-green-400 hover:text-green-300 underline underline-offset-4 transition-colors">Capture Another</button>
+                 <button onClick={resetCapture} className="mt-5 text-sm text-green-400 hover:text-green-300 underline underline-offset-4 transition-colors">{t("capture_another")}</button>
                </motion.div>
             ) : null}
           </motion.div>

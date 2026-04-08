@@ -28,6 +28,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { Toaster } from "sonner";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -35,16 +37,33 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider
-      appearance={{
-        baseTheme: dark,
-        variables: {
-          colorPrimary: "#06b6d4",
-          colorBackground: "#050a0f",
-          colorInputBackground: "#0a111a",
-          colorInputText: "#fff",
-        },
-      }}
-    >
+  appearance={{
+    baseTheme: dark,
+    variables: {
+      colorPrimary: "#06b6d4",
+      colorBackground: "#111827", // Slightly lighter dark background
+      colorInputBackground: "#1f2937",
+      colorText: "#ffffff",
+      colorTextSecondary: "#9ca3af",
+      colorTextOnPrimaryBackground: "#ffffff",
+    },
+    elements: {
+      card: "bg-medical-dark shadow-2xl border border-white/10",
+      headerTitle: "text-white font-bold",
+      headerSubtitle: "text-gray-400",
+      socialButtonsBlockButtonText: "text-white font-semibold flex-1",
+      socialButtonsBlockButton: "bg-white/5 border border-white/10 hover:bg-white/10",
+      formFieldLabel: "text-gray-300 font-semibold",
+      formFieldInput: "text-white bg-black/50 border border-white/10",
+      footerActionText: "text-gray-400",
+      footerActionLink: "text-medical-cyan hover:text-cyan-300 font-semibold",
+      formButtonPrimary: "bg-medical-cyan hover:bg-cyan-400 text-white font-bold",
+      dividerText: "text-gray-500",
+      dividerLine: "bg-white/10",
+      identityPreviewText: "text-white",
+    }
+  }}
+>
       <html lang="en" suppressHydrationWarning>
         <body 
           className={`${inter.className} min-h-screen bg-medical-black text-white antialiased`}
@@ -52,6 +71,7 @@ export default function RootLayout({
         >
           <I18nProvider>
              <Layout>{children}</Layout>
+             <Toaster theme="dark" richColors position="bottom-center" />
           </I18nProvider>
         </body>
       </html>

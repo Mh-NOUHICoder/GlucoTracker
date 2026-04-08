@@ -4,8 +4,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const maxDuration = 60;
 
-const PROMPT_SYSTEM = "You are a specialized medical AI tasked with reading glucose meter displays from user-provided images. Analyze the image to extract the glucose reading (mg/dL or mmol/L). Respond solely with a highly structured JSON object representing the data found. If no valid reading can be found, return { \"error\": \"No clear glucose reading found.\" }";
-const PROMPT_USER = "Extract the exact glucose value shown on this screen. Provide the output in strict JSON format with keys: `value` (number) and `unit` (string, either mg/dL or mmol/L). Only output the JSON object without code block formatting.";
+const PROMPT_SYSTEM = "You are a specialized medical AI tasked with reading glucose meter displays from user-provided images. Analyze the image to extract the glucose reading (mg/dL, mmol/L, or g/L). Respond solely with a highly structured JSON object representing the data found. If no valid reading can be found, return { \"error\": \"No clear glucose reading found.\" }";
+const PROMPT_USER = "Extract the exact glucose value shown on this screen. Provide the output in strict JSON format with keys: `value` (number) and `unit` (string, either mg/dL, mmol/L, or g/L). Only output the JSON object without code block formatting.";
 
 async function analyzeWithOpenAI(imageBase64: string, apiKey: string, modelId: string = "gpt-4o") {
   console.log(`Attempting analysis with OpenAI (${modelId})...`);
@@ -114,9 +114,10 @@ export async function POST(req: Request) {
           fallbackLogs += ` [${model.id} logic error: ${parsedData.error}]`;
           parsedData = null; // reset for next try
         }
-      } catch (err: any) {
-        console.warn(`Cascade FAILED for ${model.id}:`, err.message);
-        fallbackLogs += ` [${model.id} failed: ${err.message}]`;
+      } catch (err: unknown) {
+        const dErr = err as Error;
+        console.warn(`Cascade FAILED for ${model.id}:`, dErr.message);
+        fallbackLogs += ` [${model.id} failed: ${dErr.message}]`;
       }
     }
 
@@ -127,11 +128,18 @@ export async function POST(req: Request) {
       );
     }
     
+    // Normalize g/L to mg/dL (1 g/L = 100 mg/dL)
+    if (parsedData.unit === "g/L" || parsedData.unit === "g/l") {
+       parsedData.value = parsedData.value * 100;
+       parsedData.unit = "mg/dL";
+    }
+
     return NextResponse.json({ success: true, data: parsedData });
-  } catch (error: any) {
-    console.error("Critical API Execution Error:", error);
+  } catch (error: unknown) {
+    const apiError = error as Error;
+    console.error("Critical API Execution Error:", apiError);
     return NextResponse.json(
-      { error: error.message || "Failed to analyze image" },
+      { error: apiError.message || "Failed to analyze image" },
       { status: 500 }
     );
   }

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, UploadCloud, History, LayoutDashboard, Settings, Globe, ChevronDown, User, Bell } from "lucide-react";
+import { Activity, UploadCloud, History, LayoutDashboard, Settings, ChevronDown, User, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useI18n, Language } from "@/lib/i18n";
@@ -82,7 +83,7 @@ export default function Navbar() {
     { name: t("dashboard"), href: "/dashboard", icon: LayoutDashboard },
     { name: t("upload"), href: "/upload", icon: UploadCloud },
     { name: t("history"), href: "/history", icon: History },
-    { name: t("ai_setup"), href: "/models", icon: Settings },
+    { name: t("preferences"), href: "/models", icon: Settings },
   ];
 
   return (
@@ -158,7 +159,7 @@ export default function Navbar() {
                     >
                       <div className="w-9 h-9 md:w-10 md:h-10 rounded-full overflow-hidden">
                         {user?.imageUrl ? (
-                          <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
+                          <Image src={user.imageUrl} alt="Profile" width={40} height={40} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-medical-dark flex items-center justify-center text-medical-cyan">
                             <User className="w-5 h-5" />

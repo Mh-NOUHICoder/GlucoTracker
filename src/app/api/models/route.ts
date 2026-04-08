@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
 export async function GET() {
-  const models: any[] = [];
+  const models: { id: string, provider: string, name: string }[] = [];
 
   // Fetch OpenAI models
   const openAiKey = process.env.OPEN_AI_KEY || process.env.OPENAI_API_KEY;
@@ -17,7 +17,7 @@ export async function GET() {
            models.push({ id: m.id, provider: "openai", name: m.id });
         }
       });
-    } catch (err) {
+    } catch {
       console.error("Failed to list OpenAI models");
     }
   }
@@ -30,7 +30,7 @@ export async function GET() {
       if (res.ok) {
         const data = await res.json();
         const geminiModels = data.models || [];
-        geminiModels.forEach((m: any) => {
+        geminiModels.forEach((m: { supportedGenerationMethods: string[], name: string, displayName?: string }) => {
           if (m.supportedGenerationMethods.includes("generateContent")) {
              models.push({ 
                id: m.name.replace("models/", ""), 
@@ -40,7 +40,7 @@ export async function GET() {
           }
         });
       }
-    } catch (err) {
+    } catch {
       console.error("Failed to list Gemini models");
     }
   }
