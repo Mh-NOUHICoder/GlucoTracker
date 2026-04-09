@@ -92,9 +92,9 @@ export default function BackgroundServices() {
 
     const playNotificationSound = () => {
       try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!AudioContextClass) return;
+        const ctx = new AudioContextClass();
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
         osc.type = "sine";
@@ -123,10 +123,10 @@ export default function BackgroundServices() {
                data: { url: "/upload" },
                silent: false,
                vibrate: [200, 100, 200]
-            } as any);
+            } as NotificationOptions);
          } else {
             // Fallback to normal Notification API if SW isn't ready
-            const notification = new Notification(title, { body, icon: "/glucotracker.png", silent: false });
+            new Notification(title, { body, icon: "/glucotracker.png", silent: false });
          }
       }
     };

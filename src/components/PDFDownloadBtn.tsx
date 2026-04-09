@@ -4,10 +4,16 @@ import { PDFDownloadLink } from "@react-pdf/renderer";
 import { Loader2, FileDown } from "lucide-react";
 import { ReportPDF } from "@/components/ReportPDF";
 
+interface Reading {
+  id: string;
+  value: number | string;
+  created_at: string;
+}
+
 interface PDFDownloadBtnProps {
   userFullName?: string | null;
   userEmail?: string | null;
-  readings: any[];
+  readings: Reading[];
   unit?: "mg/dL" | "mmol/L" | "g/L";
   targetMin?: number;
   targetMax?: number;
@@ -41,7 +47,7 @@ export default function PDFDownloadBtn({
         fileName={`GlucoTrack_Report_${new Date().toISOString().split('T')[0]}.pdf`}
         className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-medical-dark to-medical-cyan/20 border border-medical-cyan/30 text-white font-black shadow-[0_10px_30px_rgba(6,182,212,0.15)] hover:shadow-[0_15px_40px_rgba(6,182,212,0.4)] hover:bg-medical-cyan/30 transition-all no-underline"
       >
-        {({ loading, error, url }: any) => {
+        {({ loading, error }: { loading: boolean; error: Error | null; url: string | null }) => {
           if (loading) {
             return (
               <>

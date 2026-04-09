@@ -452,9 +452,9 @@ export default function ProfileSettingsPage() {
                   <button 
                      onClick={() => {
                        try {
-                         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-                         if (AudioContext) {
-                           const ctx = new AudioContext();
+                         const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+                         if (AudioContextClass) {
+                           const ctx = new AudioContextClass();
                            const osc = ctx.createOscillator();
                            const gainNode = ctx.createGain();
                            osc.type = "sine";
@@ -479,7 +479,7 @@ export default function ProfileSettingsPage() {
                                badge: "/glucotracker.png",
                                silent: false,
                                vibrate: [200, 100, 200]
-                             } as any);
+                             } as NotificationOptions);
                            }).catch(() => {
                              new Notification(t("gluco_reminder_title") || "Test Notification", { body: "This is a test notification. 🔔", icon: "/glucotracker.png", silent: false });
                            });

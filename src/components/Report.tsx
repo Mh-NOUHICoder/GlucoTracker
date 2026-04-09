@@ -242,7 +242,7 @@ export default function Report({ userEmail, userName, readings, unit, targetMin,
                 </tr>
               </thead>
               <tbody>
-                {readings.slice(0, 15).map((reading, index) => {
+                {readings.slice(0, 15).map((reading) => {
                   const val = formatValue(Number(reading.value));
                   const rStatus = val < displayTargetMin ? t("low") : val > displayTargetMax ? t("high") : t("in_range");
                   const statusColor = val < displayTargetMin ? "#ef4444" : val > displayTargetMax ? "#f97316" : "#10b981";

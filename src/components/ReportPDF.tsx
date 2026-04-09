@@ -354,7 +354,6 @@ export const ReportPDF: React.FC<ReportPDFProps> = ({
   unit = "mg/dL",
   targetMin = 70,
   targetMax = 180,
-  locale = "en",
 }) => {
   const sortedForChart = [...readings].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   
@@ -414,6 +413,7 @@ export const ReportPDF: React.FC<ReportPDFProps> = ({
           </View>
           <View>
             <View style={styles.logoContainer}>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image src="/glucotracker.png" style={styles.logoImage} />
               <Text style={styles.logoText}>GlucoTrack</Text>
             </View>
@@ -512,7 +512,7 @@ export const ReportPDF: React.FC<ReportPDFProps> = ({
               <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Value</Text>
               <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: "right" }]}>Status</Text>
             </View>
-            {readings.slice(0, 10).map((r, idx) => {
+            {readings.slice(0, 10).map((r) => {
               const val = Number(formatValue(Number(r.value), unit));
               const status = val < displayTargetMin ? "Low" : val > displayTargetMax ? "High" : "Optimal";
               const badgeStyle = val < displayTargetMin ? styles.badgeWarning : val > displayTargetMax ? styles.badgeDanger : styles.badgeSuccess;

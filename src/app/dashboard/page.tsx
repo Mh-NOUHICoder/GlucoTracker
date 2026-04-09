@@ -1,6 +1,6 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, BarChart3, TrendingUp, AlertCircle, Droplet, Activity, Calendar, Zap, FileDown, Loader2, ChevronDown, Check } from "lucide-react";
+import { Plus, BarChart3, TrendingUp, AlertCircle, Droplet, Activity, Calendar, Zap, Loader2, ChevronDown, Check, Volume2 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
@@ -9,7 +9,6 @@ import { useI18n } from "@/lib/i18n";
 import GlucoseTrendChart from "@/components/GlucoseTrendChart";
 import dynamic from "next/dynamic";
 const PDFDownloadBtn = dynamic(() => import("@/components/PDFDownloadBtn"), { ssr: false });
-import { ReportPDF } from "@/components/ReportPDF";
 import Report from "@/components/Report";
 import localforage from "localforage";
 
@@ -116,7 +115,32 @@ export default function DashboardPage() {
     setTargetMax(Number(localStorage.getItem("target_max") || 180));
   }, []);
 
-  const runInsights = useCallback(async (freshReadings: GlucoseReading[], forceRefresh = false) => {
+  const speakInsight = useCallback((text: string) => {
+    if (!window.speechSynthesis) return;
+    
+    // Stop any current speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Map internal lang to speech locales
+    const locales: Record<string, string> = { en: "en-US", fr: "fr-FR", ar: "ar-SA" };
+    utterance.lang = locales[lang] || "en-US";
+    
+    // Soft, calm voice settings
+    utterance.pitch = 0.95; 
+    utterance.rate = 0.9;
+    utterance.volume = 0.8;
+
+    // Try to find a professional sounding voice for the locale
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.lang.startsWith(utterance.lang) && (v.name.includes("Natural") || v.name.includes("Premium") || v.name.includes("Google")));
+    if (preferredVoice) utterance.voice = preferredVoice;
+
+    window.speechSynthesis.speak(utterance);
+  }, [lang]);
+
+  const runInsights = useCallback(async (freshReadings: GlucoseReading[], forceRefresh = false, shouldSpeak = false) => {
     if (!freshReadings || freshReadings.length === 0) {
       setAiInsight("");
       return;
@@ -133,6 +157,7 @@ export default function DashboardPage() {
           const parsed = JSON.parse(cached);
           setAiInsight(parsed.insight);
           setLastAnalyzed(parsed.timestamp);
+          if (shouldSpeak) speakInsight(parsed.insight);
           return; // ✅ Serve from cache, no API call
         } catch {
           // Cache corrupt, fall through to API
@@ -164,13 +189,16 @@ export default function DashboardPage() {
         setLastAnalyzed(timestamp);
         // 💾 Save to cache so next visit doesn't re-analyze
         localStorage.setItem(cacheKey, JSON.stringify({ insight: data.insight, timestamp }));
+        
+        // Auto-read the new insight
+        speakInsight(data.insight);
       }
     } catch (err) {
       console.error("Failed to fetch insights:", err);
     } finally {
       setInsightLoading(false);
     }
-  }, [timeRange, lang]);
+  }, [timeRange, lang, speakInsight]);
 
   const fetchData = useCallback(async () => {
     if (!user) {
@@ -467,16 +495,39 @@ export default function DashboardPage() {
                       </div>
                       <span className="text-xs font-black uppercase tracking-[0.2em] text-medical-cyan">{t("status_report")}</span>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <button
-                       disabled={insightLoading}
-                       onClick={() => runInsights(readings, true)}
-                       className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-medical-cyan/10 border border-medical-cyan/20 hover:bg-medical-cyan/20 transition-all group disabled:opacity-50"
-                     >
-                        <div className={`w-1.5 h-1.5 rounded-full bg-medical-cyan ${insightLoading ? 'animate-pulse' : ''} shadow-[0_0_8px_#06b6d4]`} />
-                        <span className="text-[10px] font-black text-medical-cyan uppercase tracking-tighter group-hover:scale-105 transition-transform">{t("ai_analysis")}</span>
-                      </button>
-                      {lastAnalyzed && <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mr-2">{t("analyzed_at")} {lastAnalyzed}</span>}
+                    <div className="flex flex-col items-end gap-2 relative z-[60]">
+                      <div className="flex items-center gap-2">
+                        {aiInsight && !insightLoading && (
+                          <motion.button
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              speakInsight(aiInsight);
+                            }}
+                            className="p-2 sm:p-1.5 rounded-full bg-medical-cyan/10 border border-medical-cyan/20 text-medical-cyan hover:bg-medical-cyan/20 transition-all shadow-lg"
+                            title="Read aloud"
+                          >
+                            <Volume2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                          </motion.button>
+                        )}
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.9 }}
+                           disabled={insightLoading}
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             runInsights(readings, true, true);
+                           }}
+                           className="flex items-center gap-2.5 px-5 py-2.5 sm:px-3 sm:py-1.5 rounded-full bg-medical-cyan/15 border border-medical-cyan/30 hover:bg-medical-cyan/25 transition-all group disabled:opacity-50 touch-manipulation shadow-lg shadow-medical-cyan/5 active:bg-medical-cyan/40"
+                         >
+                          <div className={`w-2 h-2 sm:w-1.5 sm:h-1.5 rounded-full bg-medical-cyan ${insightLoading ? 'animate-pulse' : ''} shadow-[0_0_10px_#06b6d4]`} />
+                          <span className="text-[11px] sm:text-[10px] font-black text-medical-cyan uppercase tracking-wider group-hover:scale-105 transition-transform">{t("ai_analysis")}</span>
+                        </motion.button>
+                      </div>
+                      {lastAnalyzed && <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mr-2">{t("analyzed_at")} {lastAnalyzed}</span>}
                     </div>
                   </div>
                   {insightLoading ? (
