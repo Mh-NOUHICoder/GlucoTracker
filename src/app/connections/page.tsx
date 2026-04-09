@@ -21,6 +21,9 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { convertGlucose, GlucoseUnit } from "@/lib/units";
 import { Html5Qrcode } from "html5-qrcode";
+import { useUser } from "@clerk/nextjs";
+import { supabase } from "@/lib/supabase";
+import localforage from "localforage";
 
 // --- Types ---
 interface Device {
@@ -80,6 +83,7 @@ const DEVICE_SPECS: Record<string, { time: string; sample: string; memory: strin
 
 export default function ConnectionsPage() {
   const { t, lang } = useI18n();
+  const { user } = useUser();
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -92,6 +96,37 @@ export default function ConnectionsPage() {
   const [isConnected, setIsConnected] = useState(true);
   const [lastReading, setLastReading] = useState(112);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [unit, setUnit] = useState<GlucoseUnit>("mg/dL");
+  const [history, setHistory] = useState<{ value: number, time: string }[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("glucose_unit") as GlucoseUnit;
+    if (saved) setUnit(saved);
+  }, []);
+
+  const saveReading = async (value: number) => {
+    if (!user) return;
+    
+    try {
+      const { error: sbError } = await supabase.from("glucose_readings").insert({
+        user_id: user.id,
+        value: value,
+        notes: "Bluetooth Sync",
+        source: "bluetooth",
+        is_valid: true
+      });
+
+      if (!sbError) {
+        // Invalidate dashboard caches
+        const timeRanges = ["7d", "1m", "3m", "1y", "all"];
+        for (const range of timeRanges) {
+          await localforage.removeItem(`dashboard_readings_${user.id}_${range}`);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to save Bluetooth reading:", err);
+    }
+  };
 
   // Simulation: Bluetooth Data Stream
   useEffect(() => {
@@ -112,8 +147,12 @@ export default function ConnectionsPage() {
             setIsSyncing(true);
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             setTimeout(() => {
-                setLastReading(Math.floor(Math.random() * (180 - 70 + 1)) + 70);
+                const newValue = Math.floor(Math.random() * (180 - 70 + 1)) + 70;
+                setLastReading(newValue);
                 setIsSyncing(false);
+                saveReading(newValue);
+                // Add to transient history view
+                setHistory(prev => [{ value: newValue, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }, ...prev].slice(0, 3));
             }, 800);
         }
       }, 4000);
@@ -453,12 +492,16 @@ export default function ConnectionsPage() {
 
   // --- Step 5: Success State ---
   const Step5 = () => {
-    const [unit, setUnit] = useState<GlucoseUnit>("mg/dL");
     const specs = selectedDevice ? DEVICE_SPECS[selectedDevice.id] : null;
 
     useEffect(() => {
-      const saved = localStorage.getItem("glucose_unit") as GlucoseUnit;
-      if (saved) setUnit(saved);
+      // Simulate fetching historical data from meter memory
+      const fakeHistory = [
+        { value: 104, time: "08:30 AM" },
+        { value: 142, time: "Yesterday, 22:15" },
+        { value: 98, time: "Yesterday, 14:20" },
+      ];
+      setHistory(fakeHistory);
 
       // Save to past connections
       if (selectedDevice) {
@@ -612,6 +655,36 @@ export default function ConnectionsPage() {
                         {converted}
                     </motion.span>
                     <span className="text-sm font-medium text-gray-500 uppercase">{unit === 'mg/dL' ? t('mg_dl') : t('g_l')}</span>
+                </div>
+            </div>
+
+            {/* Meter Memory History */}
+            <div className="pt-6 border-t border-white/5 space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-medical-blue animate-pulse" />
+                    <span className="text-[10px] uppercase tracking-[0.2em] font-black text-gray-500">Device Memory History</span>
+                </div>
+                <div className="grid gap-2">
+                    {history.map((item, idx) => (
+                        <motion.div 
+                            key={idx}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.4 + (idx * 0.1) }}
+                            className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all"
+                        >
+                            <div className="flex items-center gap-3">
+                                <span className={`text-base font-bold ${item.value > 150 ? 'text-orange-400' : item.value < 80 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                    {convertGlucose(item.value, unit)}
+                                </span>
+                                <span className="text-[9px] text-gray-500 font-bold uppercase">{unit === 'mg/dL' ? 'mg/dL' : 'g/L'}</span>
+                            </div>
+                            <span className="text-[10px] text-gray-600 font-medium">{item.time}</span>
+                        </motion.div>
+                    ))}
+                    {history.length === 0 && (
+                        <p className="text-[10px] text-gray-600 italic text-center py-2">Syncing device logs...</p>
+                    )}
                 </div>
             </div>
           </div>
