@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, UploadCloud, History, LayoutDashboard, Settings, ChevronDown, User, Bell } from "lucide-react";
+import { Activity, UploadCloud, History, LayoutDashboard, Settings, ChevronDown, User, Bell, Bluetooth } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useI18n, Language } from "@/lib/i18n";
@@ -82,6 +82,7 @@ export default function Navbar() {
   const links = [
     { name: t("dashboard"), href: "/dashboard", icon: LayoutDashboard },
     { name: t("upload"), href: "/upload", icon: UploadCloud },
+    { name: t("connections"), href: "/connections", icon: Bluetooth },
     { name: t("history"), href: "/history", icon: History },
     { name: t("preferences"), href: "/models", icon: Settings },
   ];

@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 const PDFDownloadBtn = dynamic(() => import("@/components/PDFDownloadBtn"), { ssr: false });
 import Report from "@/components/Report";
 import localforage from "localforage";
+import { convertGlucose } from "@/lib/units";
 
 export interface GlucoseReading {
   id: string;
@@ -282,25 +283,19 @@ export default function DashboardPage() {
 
   // PDF download handled via PDFDownloadLink component; no custom function needed
 
-  const formatValue = (val: number) => {
-     if (unit === "mmol/L") return Number((val / 18.0182).toFixed(1));
-     if (unit === "g/L") return Number((val / 100).toFixed(2));
-     return val;
-  };
-
-  const values = readings.map(r => formatValue(Number(r.value)));
-  const displayTargetMin = formatValue(targetMin);
-  const displayTargetMax = formatValue(targetMax);
+  const displayTargetMin = convertGlucose(targetMin, unit);
+  const displayTargetMax = convertGlucose(targetMax, unit);
 
   const rawAvg = readings.length ? readings.reduce((a, b) => a + Number(b.value), 0) / readings.length : 0;
   const eA1c = readings.length ? ((rawAvg + 46.7) / 28.7).toFixed(1) : "--";
 
+  const values = readings.map(r => convertGlucose(Number(r.value), unit));
   const avg = values.length 
-      ? (unit === "mg/dL" ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : (values.reduce((a, b) => a + b, 0) / values.length).toFixed(unit === "g/L" ? 2 : 1)) 
+      ? (unit === "mg/dL" ? Math.round(values.reduce((a, b) => a + Number(b), 0) / values.length) : (values.reduce((a, b) => a + Number(b), 0) / values.length).toFixed(unit === "g/L" ? 2 : 1)) 
       : "--";
-  const inRange = values.filter(v => v >= displayTargetMin && v <= displayTargetMax).length;
+  const inRange = values.filter(v => Number(v) >= displayTargetMin && Number(v) <= displayTargetMax).length;
   const inRangePct = values.length ? Math.round((inRange / values.length) * 100) : "--";
-  const hypoCount = values.filter(v => v < displayTargetMin).length;
+  const hypoCount = values.filter(v => Number(v) < displayTargetMin).length;
 
   const [weeklyPattern, setWeeklyPattern] = useState("");
   
