@@ -6,6 +6,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import Layout from "@/components/Layout";
 import { I18nProvider } from "@/lib/i18n";
+import InitialLoader from "@/components/InitialLoader";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -69,10 +70,12 @@ export default function RootLayout({
           className={`${inter.className} min-h-screen bg-medical-black text-white antialiased`}
           suppressHydrationWarning
         >
-          <I18nProvider>
-             <Layout>{children}</Layout>
-             <Toaster theme="dark" richColors position="bottom-center" />
-          </I18nProvider>
+          <InitialLoader>
+            <I18nProvider>
+               <Layout>{children}</Layout>
+               <Toaster theme="dark" richColors position="bottom-center" />
+            </I18nProvider>
+          </InitialLoader>
         </body>
       </html>
     </ClerkProvider>
