@@ -24,6 +24,8 @@ export default function HistoryPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [unit, setUnit] = useState("mg/dL");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
   const { t } = useI18n();
 
   useEffect(() => {
@@ -92,19 +94,91 @@ export default function HistoryPage() {
     if (!window.confirm(t("delete_confirm"))) return;
 
     try {
-      const deletedStr = localStorage.getItem("deleted_readings") || "[]";
-      const deletedIds = JSON.parse(deletedStr);
-      
-      if (!deletedIds.includes(id)) {
-        deletedIds.push(id);
-        localStorage.setItem("deleted_readings", JSON.stringify(deletedIds));
+      // 1. Database Delete
+      if (user) {
+        const { error } = await supabase.from("glucose_readings").delete().eq("id", id);
+        if (error) throw error;
       }
 
-      setReadings(prev => prev.filter(r => r.id !== id));
-      toast.success("Reading deleted from history");
+      // 2. Local Virtual Filter (Persistent safety)
+      const deletedStr = localStorage.getItem("deleted_readings") || "[]";
+      const deletedIdsArr = JSON.parse(deletedStr);
+      if (!deletedIdsArr.includes(id)) {
+        deletedIdsArr.push(id);
+        localStorage.setItem("deleted_readings", JSON.stringify(deletedIdsArr));
+      }
+
+      // 3. Local State Sync
+      const nextReadings = readings.filter(r => r.id !== id);
+      setReadings(nextReadings);
+      setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+      
+      // 4. Update IndexedDB Cache
+      if (user) {
+        await localforage.setItem(`readings_${user.id}`, nextReadings);
+      }
+
+      toast.success("Reading deleted successfully");
     } catch (err) {
-      toast.error("Failed to delete reading");
-      console.error("Virtual delete failed:", err);
+      toast.error("Failed to delete reading. Restricted access?");
+      console.error("Delete failed:", err);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!user || selectedIds.size === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} readings from the database?`)) return;
+
+    setIsDeleting(true);
+    try {
+      const idsToDelete = Array.from(selectedIds);
+      
+      // 1. Supabase Delete
+      const { error } = await supabase
+        .from("glucose_readings")
+        .delete()
+        .in("id", idsToDelete);
+
+      if (error) throw error;
+
+      // 2. Local Virtual Filter Sync
+      const deletedStr = localStorage.getItem("deleted_readings") || "[]";
+      let deletedIdsArr = JSON.parse(deletedStr);
+      deletedIdsArr = Array.from(new Set([...deletedIdsArr, ...idsToDelete]));
+      localStorage.setItem("deleted_readings", JSON.stringify(deletedIdsArr));
+
+      // 3. Local State Sync
+      const nextReadings = readings.filter(r => !selectedIds.has(r.id));
+      setReadings(nextReadings);
+      
+      // 4. Update IndexedDB Cache
+      await localforage.setItem(`readings_${user.id}`, nextReadings);
+      
+      setSelectedIds(new Set());
+      toast.success(`${idsToDelete.length} readings removed successfully`);
+    } catch (err) {
+      toast.error("Bulk delete failed. Check connection.");
+      console.error(err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const toggleSelect = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === readings.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(readings.map(r => r.id)));
     }
   };
 
@@ -148,12 +222,21 @@ export default function HistoryPage() {
       className="space-y-8 pb-10"
     >
       <div className="flex justify-between items-center bg-gradient-to-r from-medical-dark to-medical-black p-8 rounded-3xl border border-medical-cyan/10 shadow-2xl">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">{t("manage_readings")}</h1>
-          <p className="text-medical-cyan/70 font-medium">{t("sync_message")}</p>
+        <div className="flex items-center gap-6">
+          <button 
+             onClick={toggleSelectAll}
+             className={`w-10 h-10 rounded-2xl border flex items-center justify-center transition-all ${selectedIds.size === readings.length && readings.length > 0 ? "bg-medical-primary border-medical-primary shadow-[0_0_15px_#00e5ff]" : "bg-white/5 border-white/10 hover:border-medical-primary/50"}`}
+             title={selectedIds.size === readings.length ? "Deselect All" : "Select All"}
+          >
+             {selectedIds.size === readings.length && readings.length > 0 ? <Check className="w-5 h-5 text-black" strokeWidth={4} /> : <div className="w-4 h-4 rounded-md border-2 border-white/20" />}
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-white mb-2">{t("manage_readings")}</h1>
+            <p className="text-medical-cyan/70 font-medium">{t("sync_message")}</p>
+          </div>
         </div>
         <div className="flex gap-4">
-           <div className="p-3 rounded-2xl bg-medical-black border border-medical-blue/30 text-medical-cyan shadow-[0_0_15px_-5px_#06b6d4]">
+           <div className="p-3 rounded-2xl bg-medical-black border border-medical-primary/30 text-medical-primary shadow-[0_0_15px_-5px_#00e5ff]">
              <HistoryIcon className="w-6 h-6" />
            </div>
         </div>
@@ -161,7 +244,7 @@ export default function HistoryPage() {
 
       {loading ? (
         <div className="w-full flex justify-center py-20">
-          <div className="w-12 h-12 border-4 border-medical-blue/20 border-t-medical-cyan rounded-full animate-spin shadow-[0_0_20px_rgba(6,182,212,0.2)]"></div>
+          <div className="w-12 h-12 border-4 border-medical-primary/20 border-t-medical-primary rounded-full animate-spin shadow-[0_0_20px_rgba(255,158,94,0.2)]"></div>
         </div>
       ) : readings.length === 0 ? (
         <motion.div
@@ -195,10 +278,16 @@ export default function HistoryPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -100 }}
-                  className="group relative flex flex-col sm:flex-row items-center justify-between p-6 rounded-2xl bg-medical-dark/40 border border-white/5 hover:border-medical-cyan/30 transition-all backdrop-blur-md"
+                  onClick={() => toggleSelect(reading.id)}
+                  className={`group relative flex flex-col sm:flex-row items-center justify-between p-6 rounded-2xl bg-medical-dark shadow-xl border transition-all backdrop-blur-md cursor-pointer ${selectedIds.has(reading.id) ? "border-medical-primary ring-1 ring-medical-primary/20 bg-medical-primary/[0.03]" : "border-white/5 hover:border-medical-primary/30"}`}
                 >
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-6 w-full">
                     <div className="flex items-center gap-4 w-full">
+                      {/* Selection Checkbox */}
+                      <div className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 transition-all ${selectedIds.has(reading.id) ? "bg-medical-primary border-medical-primary shadow-[0_0_8px_#00e5ff]" : "border-white/10 group-hover:border-medical-primary/50"}`}>
+                        {selectedIds.has(reading.id) && <Check className="w-4 h-4 text-black" strokeWidth={4} />}
+                      </div>
+
                       <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center border ${isHigh ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500' : isLow ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-green-500/10 border-green-500/20 text-green-500'}`}>
                         <Activity className="w-6 h-6" />
                       </div>
@@ -211,10 +300,10 @@ export default function HistoryPage() {
                                 value={editValue} 
                                 onChange={(e) => setEditValue(e.target.value)}
                                 autoFocus
-                                className="w-24 bg-medical-black border border-medical-cyan rounded-lg px-2 py-1 text-white text-xl font-bold focus:outline-none"
+                                className="w-24 bg-medical-black border border-medical-primary rounded-lg px-2 py-1 text-white text-xl font-bold focus:outline-none"
                              />
-                             <button onClick={() => handleUpdate(reading.id)} className="p-2 bg-medical-cyan rounded-lg text-white hover:bg-medical-accent"><Check className="w-5 h-5"/></button>
-                             <button onClick={() => setEditingId(null)} className="p-2 bg-gray-500/20 rounded-lg text-gray-400 hover:text-white"><X className="w-5 h-5"/></button>
+                             <button onClick={() => handleUpdate(reading.id)} className="p-2 bg-medical-primary rounded-lg text-black hover:opacity-90"><Check className="w-5 h-5"/></button>
+                             <button onClick={() => setEditingId(null)} className="p-2 bg-white/5 rounded-lg text-gray-400 hover:text-white"><X className="w-5 h-5"/></button>
                           </div>
                         ) : (
                           <h3 className="text-white font-black text-2xl tracking-tight">
@@ -269,6 +358,47 @@ export default function HistoryPage() {
           </AnimatePresence>
         </div>
       )}
+      {/* Bulk Action Bar */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-6"
+          >
+            <div className="bg-medical-dark/95 backdrop-blur-2xl border border-medical-primary/20 p-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 ml-2">
+                <div className="w-10 h-10 rounded-2xl bg-medical-primary/10 flex items-center justify-center">
+                  <Activity className="w-5 h-5 text-medical-primary" />
+                </div>
+                <div>
+                  <p className="text-white font-bold text-sm">{selectedIds.size} Selected</p>
+                  <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Readings ready</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setSelectedIds(new Set())}
+                  className="px-4 py-2.5 rounded-xl border border-white/5 text-gray-400 font-bold text-xs hover:text-white transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleBulkDelete}
+                  disabled={isDeleting}
+                  className="px-6 py-2.5 rounded-xl bg-red-500 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all flex items-center gap-2"
+                >
+                  {isDeleting ? <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  Delete From DB
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 }

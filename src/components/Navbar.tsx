@@ -38,7 +38,7 @@ function LanguageSwitcher() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-medical-dark/50 border border-medical-cyan/20 backdrop-blur-md hover:border-medical-cyan/50 transition-all shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-medical-dark/50 border border-medical-primary/20 backdrop-blur-md hover:border-medical-primary/50 transition-all shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
       >
         <span className="text-lg">{currentLang?.flag}</span>
         <span className="text-xs font-bold uppercase tracking-widest text-gray-300 hidden sm:block">{lang}</span>
@@ -60,8 +60,8 @@ function LanguageSwitcher() {
                   setLang(l.code);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all hover:bg-medical-cyan/10 
-                  ${lang === l.code ? "bg-medical-cyan/20 text-medical-cyan font-bold" : "text-gray-400"}`}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all hover:bg-medical-primary/10 
+                  ${lang === l.code ? "bg-medical-primary/20 text-medical-primary font-bold" : "text-gray-400"}`}
               >
                 <span>{l.flag}</span>
                 <span>{l.label}</span>
@@ -96,11 +96,11 @@ export default function Navbar() {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2.5 group">
               <div className="relative">
-                <div className="absolute inset-0 bg-medical-cyan/20 blur-lg rounded-full animate-pulse" />
-                <Activity className="h-7 w-7 text-medical-cyan relative z-10" />
+                <div className="absolute inset-0 bg-medical-primary/20 blur-lg rounded-full animate-pulse" />
+                <Activity className="h-7 w-7 text-medical-primary relative z-10" />
               </div>
               <span className="font-black text-xl md:text-2xl tracking-tighter text-white">
-                Gluco<span className="text-medical-cyan">Track</span>
+                Gluco<span className="text-medical-primary">Track</span>
               </span>
             </Link>
 
@@ -115,16 +115,16 @@ export default function Navbar() {
                     href={link.href}
                     className={`relative flex items-center gap-2 px-5 py-2.5 text-sm font-bold transition-all rounded-xl ${
                       isActive 
-                        ? "text-white bg-medical-cyan/20 shadow-[0_0_20px_rgba(6,182,212,0.2)]" 
+                        ? "text-white bg-medical-primary/20 shadow-[0_0_20px_rgba(255,158,94,0.2)]" 
                         : "text-gray-500 hover:text-gray-200 hover:bg-white/5"
                     }`}
                   >
-                    <Icon className={`h-4 w-4 ${isActive ? "text-medical-cyan" : ""}`} />
+                    <Icon className={`h-4 w-4 ${isActive ? "text-medical-primary" : ""}`} />
                     {link.name}
                     {isActive && (
                       <motion.div
                         layoutId="nav-pill"
-                        className="absolute inset-0 border border-medical-cyan/30 rounded-xl"
+                        className="absolute inset-0 border border-medical-primary/30 rounded-xl"
                         transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                       />
                     )}
@@ -149,7 +149,7 @@ export default function Navbar() {
                     className="relative p-2 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors hidden sm:flex"
                   >
                     <Bell className="w-5 h-5 text-gray-400" />
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-medical-cyan rounded-full border-2 border-medical-black" />
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-medical-primary rounded-full border-2 border-medical-black" />
                   </motion.button>
 
                   <Link href="/profile">
@@ -176,7 +176,7 @@ export default function Navbar() {
                   <motion.button 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="px-3 py-1.5 sm:px-6 sm:py-2.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-medical-blue to-medical-cyan text-white text-[11px] sm:text-sm font-bold shadow-lg shadow-medical-cyan/20 hover:shadow-medical-cyan/40 transition-all border border-white/10 whitespace-nowrap"
+                    className="btn-primary !px-6 !py-2 !rounded-xl !w-auto !h-auto text-sm"
                   >
                     {t("sign_in_save")}
                   </motion.button>
@@ -203,14 +203,14 @@ export default function Navbar() {
                 <motion.div
                   whileTap={{ scale: 0.9 }}
                   className={`relative p-4 rounded-full transition-all ${
-                    isActive ? "text-medical-cyan" : "text-gray-400 hover:text-gray-200"
+                    isActive ? "text-medical-primary" : "text-gray-400 hover:text-gray-200"
                   }`}
                 >
-                  <Icon className={`w-6 h-6 ${isActive ? "drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" : ""}`} />
+                  <Icon className={`w-6 h-6 ${isActive ? "drop-shadow-[0_0_8px_rgba(255,158,94,0.8)]" : ""}`} />
                   {isActive && (
                     <motion.div
                       layoutId="mobile-nav-indicator"
-                      className="absolute inset-0 bg-medical-cyan/10 rounded-full border border-medical-cyan/20"
+                      className="absolute inset-0 bg-medical-primary/10 rounded-full border border-medical-primary/20"
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}

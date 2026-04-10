@@ -8,7 +8,6 @@ import {
   Bluetooth,
   CheckCircle2,
   ArrowLeft,
-  Settings2,
   Cpu,
   QrCode,
   Keyboard,
@@ -23,6 +22,8 @@ import {
   CloudUpload,
   X,
   Info,
+  Smartphone,
+  Trash2,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
@@ -149,6 +150,38 @@ function parseGlucoseMeasurement(data: DataView): MeterReading {
   };
 }
 
+// ─── Senior TypeScript Bluetooth Interfaces ───────────────────────────────────
+interface BluetoothDevice extends EventTarget {
+  id: string;
+  name?: string;
+  gatt?: BluetoothRemoteGATTServer;
+}
+interface BluetoothRemoteGATTServer {
+  connect(): Promise<BluetoothRemoteGATTServer>;
+  disconnect(): void;
+  getPrimaryService(service: string | number): Promise<BluetoothRemoteGATTService>;
+  connected: boolean;
+  device: BluetoothDevice;
+}
+interface BluetoothRemoteGATTService {
+  getCharacteristic(characteristic: string | number): Promise<BluetoothRemoteGATTCharacteristic>;
+}
+interface BluetoothRemoteGATTCharacteristic extends EventTarget {
+  startNotifications(): Promise<void>;
+  stopNotifications(): Promise<void>;
+  readValue(): Promise<DataView>;
+  value?: DataView;
+}
+interface BluetoothNavigator extends Navigator {
+  bluetooth: {
+    getAvailability(): Promise<boolean>;
+    requestDevice(options: { 
+      filters?: { services?: (string | number)[]; namePrefix?: string }[]; 
+      optionalServices?: (string | number)[];
+    }): Promise<BluetoothDevice>;
+  } & EventTarget;
+}
+
 // ─── Main Page Component ──────────────────────────────────────────────────────
 
 export default function ConnectionsPage() {
@@ -166,9 +199,10 @@ export default function ConnectionsPage() {
   const [savedDevices, setSavedDevices] = useState<Device[]>([]);
 
   // ── live connection state ──
-  const [batteryLevel] = useState(87);
+  const [batteryLevel, setBatteryLevel] = useState(100);
   const [lastReading, setLastReading] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [bleDevice, setBleDevice] = useState<BluetoothDevice | null>(null);
   const [unit, setUnit] = useState<GlucoseUnit>("mg/dL");
 
   // ── bluetooth detection state ──
@@ -181,6 +215,12 @@ export default function ConnectionsPage() {
   const [selectedReadings, setSelectedReadings] = useState<Set<string>>(new Set());
   const [saveProgress, setSaveProgress] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [discoveredDevices, setDiscoveredDevices] = useState<(Device & { signal: number })[]>([]);
+  const [selectedDiscoveredDevice, setSelectedDiscoveredDevice] = useState<Device | null>(null);
+
+  // ── New Professional Settings ──
+  const [autoCollect, setAutoCollect] = useState(true);
+  const [keepHistory, setKeepHistory] = useState(false);
 
   // ── init ──
   useEffect(() => {
@@ -203,8 +243,7 @@ export default function ConnectionsPage() {
       d.brand.toLowerCase().includes(searchQuery.toLowerCase())
     ), [searchQuery]);
 
-  const totalSteps = 5;
-  const progress = ((step + 1) / totalSteps) * 100;
+  const totalSteps = 6;
 
   const nextStep = useCallback(() => setStep(s => Math.min(s + 1, totalSteps - 1)), []);
   const prevStep = useCallback(() => {
@@ -220,35 +259,86 @@ export default function ConnectionsPage() {
     if (selectedDevice?.id === deviceId) { setSelectedDevice(null); setStep(0); }
   };
 
+  const handleRealDiscovery = async () => {
+    setIsSearching(true);
+    setDiscoveredDevices([]);
+    
+    const nav = navigator as BluetoothNavigator;
+    if (!nav.bluetooth) {
+      // Fallback to simulation if Bluetooth is missing
+      simulateSearch();
+      return;
+    }
+
+    try {
+      // Trigger the REAL browser picker
+      const device = await nav.bluetooth.requestDevice({
+        // Standard filters for glucose meters (GATT Blood Glucose Service)
+        filters: [
+          { services: [0x1808] },
+          { namePrefix: "Accu-Chek" },
+          { namePrefix: "Contour" },
+          { namePrefix: "OneTouch" }
+        ],
+        optionalServices: [0x180F, "device_information"]
+      });
+
+      // Once they pick a device
+      const catalogMatch = DEVICES.find(d => 
+        device.name?.toLowerCase().includes(d.name.toLowerCase()) || 
+        device.name?.toLowerCase().includes(d.brand.toLowerCase()) ||
+        selectedDevice?.id === d.id
+      );
+
+      const discovered: Device & { signal: number } = {
+        id: device.id,
+        name: device.name?.replace(/^meter\+/i, "Meter ") || "Unknown Device", // Cleaner name
+        brand: catalogMatch?.brand || "GATT Meter",
+        image: catalogMatch?.image || (selectedDevice?.image || "/devices/accu-chek/images/logo.png"),
+        color: catalogMatch?.color || "#94a3b8",
+        signal: 100
+      };
+
+      setDiscoveredDevices([discovered]);
+      setSelectedDiscoveredDevice(discovered);
+      setBleDevice(device);
+      setIsSearching(false);
+      
+      // Advance to pairing/confirmation
+      nextStep();
+    } catch (err) {
+      console.error("Discovery error:", err);
+      setIsSearching(false);
+      // Don't advance if they cancelled the picker
+    }
+  };
+
   const simulateSearch = () => {
     setIsSearching(true);
-    setTimeout(() => { setIsSearching(false); nextStep(); }, 3000);
+    setDiscoveredDevices([]);
+    
+    // Prioritize showing the selected device plus some neighbors for realism
+    const found = [
+      selectedDevice || DEVICES[0], 
+      DEVICES[4], 
+      DEVICES[2]
+    ].filter(Boolean) as Device[];
+    
+    found.forEach((dev, i) => {
+      setTimeout(() => {
+        // Random signal between -90 and -50
+        const dbm = -50 - Math.floor(Math.random() * 40);
+        setDiscoveredDevices(prev => [...prev, { ...dev, signal: dbm }]);
+      }, 800 + (i * 1000));
+    });
+
+    setTimeout(() => { 
+      setIsSearching(false); 
+      // DO NOT clear and DO NOT nextStep() - user must select
+    }, 4500);
   };
 
   // ─── Bluetooth availability check ─────────────────────────────────────────────
-  // Local type shim — avoids @types/web-bluetooth dependency
-  interface BluetoothDevice extends EventTarget {
-    gatt: {
-      connect(): Promise<BluetoothRemoteGATTServer>;
-    };
-  }
-  interface BluetoothRemoteGATTServer {
-    getPrimaryService(service: string): Promise<BluetoothRemoteGATTService>;
-  }
-  interface BluetoothRemoteGATTService {
-    getCharacteristic(characteristic: string): Promise<BluetoothRemoteGATTCharacteristic>;
-  }
-  interface BluetoothRemoteGATTCharacteristic extends EventTarget {
-    startNotifications(): Promise<void>;
-    value?: DataView;
-  }
-  interface BluetoothNavigator extends Navigator {
-    bluetooth: {
-      getAvailability(): Promise<boolean>;
-      requestDevice(options: { filters?: { services?: string[]; namePrefix?: string }[]; optionalServices?: string[] }): Promise<BluetoothDevice>;
-    } & EventTarget;
-  }
-
   const checkBluetooth = useCallback(async () => {
     setBtStatus("checking");
 
@@ -310,6 +400,16 @@ export default function ConnectionsPage() {
     }
   }, [step]);
 
+  // Graceful BLE Disconnect on unmount
+  useEffect(() => {
+    return () => {
+      if (bleDevice?.gatt?.connected) {
+        bleDevice.gatt.disconnect();
+      }
+    };
+  }, [bleDevice]);
+
+  // ─── Save individual reading (Immediate Sync) ────────────────────────────────
   // ─── Meter Memory: fetch latest reading from Supabase on success screen ──────
   const fetchLatestFromDB = useCallback(async () => {
     if (!user) return;
@@ -360,76 +460,6 @@ export default function ConnectionsPage() {
   // ─── Meter Memory: Real Discovery vs Demo ─────────────────────────────────────
   const discoveryMode = useRef<"real" | "demo">("demo");
 
-  const collectMeterMemory = useCallback(async (mode: "real" | "demo" = "demo") => {
-    discoveryMode.current = mode;
-    setMemoryView("loading");
-    setMeterMemory([]);
-    setSaveError(null);
-
-    if (mode === "demo") {
-      // Premium Simulation
-      await new Promise(r => setTimeout(r, 2200));
-      const readings = generateRealisticReadings(20);
-      setMeterMemory(readings);
-      setSelectedReadings(new Set(readings.map(r => r.id)));
-      setMemoryView("ready");
-    } else {
-      // ── REAL WEB BLUETOOTH SYNC ──
-      const nav = navigator as BluetoothNavigator;
-      if (!nav.bluetooth) {
-         setSaveError("Web Bluetooth not supported");
-         setMemoryView("idle");
-         return;
-      }
-
-      try {
-        const device = await nav.bluetooth.requestDevice({
-          filters: [{ services: ["glucose"] }],
-          optionalServices: ["battery_service", "device_information"]
-        });
-
-        // Connect to GATT
-        const server = await device.gatt.connect();
-        
-        // Discovery Service
-        const service = await server.getPrimaryService("glucose");
-        
-        // Get Measurement Characteristic
-        const characteristic = await service.getCharacteristic("glucose_measurement");
-        
-        // Listen for data
-        await characteristic.startNotifications();
-        
-        characteristic.addEventListener("characteristicvaluechanged", (event: Event) => {
-          const target = event.target as BluetoothRemoteGATTCharacteristic;
-          if (!target.value) return;
-          const reading = parseGlucoseMeasurement(target.value);
-          setMeterMemory(prev => {
-            if (prev.find(r => r.id === reading.id)) return prev;
-            return [reading, ...prev];
-          });
-        });
-
-        // ── Advance Logic ── 
-        // We wait for the first incoming packet or a short timeout
-        // (Real meters sometimes need a button press on the device to send records)
-        await new Promise(r => setTimeout(r, 5000)); 
-
-        setMemoryView("ready");
-
-      } catch (err: unknown) {
-        console.error("BT ERROR", err);
-        const error = err as Error;
-        if (error.name === "NotFoundError") {
-          setMemoryView("idle"); 
-        } else {
-          setSaveError("Connection failed: " + error.message);
-          setMemoryView("idle");
-        }
-      }
-    }
-  }, [generateRealisticReadings]);
-
   // ─── Save selected readings to Supabase ───────────────────────────────────────
   const saveSelectedToDatabase = useCallback(async () => {
     if (!user || selectedReadings.size === 0) return;
@@ -467,7 +497,114 @@ export default function ConnectionsPage() {
     ));
 
     setMemoryView("saved");
-  }, [user, selectedReadings, meterMemory, selectedDevice]);
+
+    // "Feel Good" Automation: Auto-redirect to dashboard after save success
+    setTimeout(() => {
+      router.push("/dashboard");
+    }, 2500);
+  }, [user, selectedReadings, meterMemory, selectedDevice, router]);
+
+
+  const collectMeterMemory = useCallback(async (mode: "real" | "demo" = "demo") => {
+    discoveryMode.current = mode;
+    setMemoryView("loading");
+    setMeterMemory([]);
+    setSaveError(null);
+
+    if (mode === "demo") {
+      // Premium Simulation
+      await new Promise(r => setTimeout(r, 2200));
+      const readings = generateRealisticReadings(20);
+      setMeterMemory(readings);
+      setSelectedReadings(new Set(readings.map(r => r.id)));
+      setMemoryView("ready");
+    } else {
+      // ── REAL WEB BLUETOOTH SYNC ──
+      const nav = navigator as BluetoothNavigator;
+      if (!nav.bluetooth) {
+         setSaveError("Bluetooth not supported/enabled in this browser");
+         setMemoryView("idle");
+         return;
+      }
+
+      try {
+        let device = bleDevice;
+        
+        if (!device) {
+          device = await nav.bluetooth.requestDevice({
+            filters: [{ services: [0x1808] }],
+            optionalServices: [0x180F, "device_information"]
+          });
+          setBleDevice(device);
+        }
+
+        const onDisconnect = () => {
+          setBtStatus("idle");
+          setMemoryView("idle");
+          setBleDevice(null);
+        };
+
+        device.addEventListener("gattserverdisconnected", onDisconnect);
+
+        const server = await device.gatt!.connect();
+        
+        // If we are in the wizard flow (Step 3), jump straight to Success/Live (Step 5)
+        // Skipping manual PIN Step 4 because OS handles it
+        if (step === 3) {
+          setStep(5);
+        }
+
+        const service = await server.getPrimaryService(0x1808);
+        const char = await service.getCharacteristic(0x2A18);
+        
+        await char.startNotifications();
+        
+        char.addEventListener("characteristicvaluechanged", (event: Event) => {
+          const target = event.target as BluetoothRemoteGATTCharacteristic;
+          if (target.value) {
+            const reading = parseGlucoseMeasurement(target.value);
+            
+            // Show big number instantly for UX
+            setLastReading(reading.value);
+            
+            // Add to review list, but DO NOT save to DB yet (user control)
+            setMeterMemory(prev => {
+              if (prev.find(r => r.id === reading.id)) return prev;
+              const next = [reading, ...prev];
+              // Keep view manageable
+              return next.slice(0, 50);
+            });
+            
+            // Pre-select for the user so they only need one click to save
+            setSelectedReadings(prev => new Set([...prev, reading.id]));
+          }
+        });
+
+        // Optional Battery
+        try {
+          const batt = await server.getPrimaryService(0x180F);
+          const levelChar = await batt.getCharacteristic(0x2A19);
+          const val = await levelChar.readValue();
+          setBatteryLevel(val.getUint8(0));
+        } catch { /* ignore battery fail */ }
+
+        setMemoryView("ready");
+
+        // Automation: If auto-collect is on, trigger save immediately after connection
+        if (autoCollect) {
+          // Give it a small heartbeat for UI feel before saving
+          setTimeout(() => {
+            saveSelectedToDatabase();
+          }, 1500);
+        }
+      } catch (err) {
+        console.error("BLE FAIL", err);
+        setMemoryView("idle");
+        setSaveError(err instanceof Error ? err.message : "Connection failed");
+      }
+    }
+  }, [generateRealisticReadings, bleDevice, step, autoCollect, saveSelectedToDatabase]);
+
 
   const toggleReading = (id: string) => {
     setSelectedReadings(prev => {
@@ -500,25 +637,25 @@ export default function ConnectionsPage() {
               <motion.div
                 key={`saved-${device.id}`}
                 whileHover={{ scale: 1.01 }}
-                className="flex items-center gap-4 p-3 rounded-2xl border border-medical-cyan/20 bg-medical-cyan/5 backdrop-blur-xl relative group"
+                className="flex items-center gap-4 p-3 rounded-2xl border border-[#ff9e5e]/20 bg-[#ff9e5e]/5 backdrop-blur-xl relative group"
               >
                 <div onClick={() => { setSelectedDevice(device); setStep(4); }}
                   className="w-12 h-12 rounded-xl overflow-hidden bg-gray-800 flex-shrink-0 relative cursor-pointer">
                   <Image src={device.image} alt={device.name} width={48} height={48} className="w-full h-full object-cover opacity-90" />
-                  <div className="absolute inset-0 bg-medical-cyan/10" />
+                  <div className="absolute inset-0 bg-medical-primary/10" />
                 </div>
                 <div onClick={() => { setSelectedDevice(device); setStep(4); }} className="flex-1 cursor-pointer">
                   <h3 className="font-semibold text-white text-sm">{device.name}</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Connected</p>
+                    <div className="w-1.5 h-1.5 rounded-full bg-medical-primary animate-pulse" />
+                    <p className="text-[10px] text-medical-primary font-bold uppercase tracking-wider">Connected</p>
                   </div>
                 </div>
                 <button
                   onClick={e => { e.stopPropagation(); handleDisconnect(device.id); }}
                   className="p-2 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 rounded-xl transition-all text-red-500"
                 >
-                  <ZapOff className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </motion.div>
             ))}
@@ -624,11 +761,11 @@ export default function ConnectionsPage() {
               <button
                 onClick={checkBluetooth}
                 disabled={btStatus === "on"}
-                className="w-full py-4 bg-medical-cyan text-black font-black rounded-2xl shadow-lg shadow-medical-cyan/25 hover:opacity-90 transition-all active:scale-[0.98] uppercase tracking-widest text-sm disabled:opacity-60"
+                className="btn-primary"
               >
                 {t("connect_now")}
               </button>
-              <button onClick={prevStep} className="w-full py-3 bg-white/5 text-gray-400 font-medium rounded-2xl hover:bg-white/10 transition-all text-sm">
+              <button onClick={prevStep} className="btn-secondary">
                 {t("cancel")}
               </button>
             </motion.div>
@@ -712,11 +849,11 @@ export default function ConnectionsPage() {
               {/* Retry + cancel */}
               <button
                 onClick={checkBluetooth}
-                className="w-full py-4 bg-white/5 border border-white/10 text-white font-bold rounded-2xl hover:bg-white/10 transition-all text-sm uppercase tracking-widest"
+                className="btn-primary"
               >
                 Check Again
               </button>
-              <button onClick={prevStep} className="w-full py-3 text-gray-600 font-medium text-sm hover:text-gray-400 transition-all">
+              <button onClick={prevStep} className="btn-secondary">
                 {t("cancel")}
               </button>
             </motion.div>
@@ -738,11 +875,11 @@ export default function ConnectionsPage() {
               </div>
               <button
                 onClick={nextStep}
-                className="w-full py-4 bg-medical-cyan text-black font-black rounded-2xl shadow-lg shadow-medical-cyan/25 hover:opacity-90 transition-all uppercase tracking-widest text-sm"
+                className="btn-primary"
               >
                 Continue Anyway
               </button>
-              <button onClick={prevStep} className="w-full py-3 bg-white/5 text-gray-400 font-medium rounded-2xl hover:bg-white/10 transition-all text-sm">
+              <button onClick={prevStep} className="btn-secondary">
                 {t("cancel")}
               </button>
             </motion.div>
@@ -755,58 +892,230 @@ export default function ConnectionsPage() {
 
   // ── Step 2: Instructional Guide ────────────────────────────────────────────────
   const Step2 = () => (
-    <div className="space-y-8">
-      <div className="space-y-4">
-        <InstructionItem icon={<Settings2 className="w-5 h-5 text-medical-cyan" />} text={t("turn_off_meter")} step={1} />
-        <InstructionItem icon={<Bluetooth className="w-5 h-5 text-medical-cyan" />} text={t("long_press_bt")} step={2} />
+    <div className="space-y-8 min-h-[70vh] flex flex-col items-center justify-between py-6">
+      
+      {/* ── Scanning Header ── */}
+      <div className="text-center space-y-2">
+        <h2 className="text-xl font-bold text-white">
+          {isSearching ? "Looking for compatible sensors..." : "Sensors Discovery"}
+        </h2>
       </div>
 
-      <div className="flex flex-col items-center justify-center pt-4 space-y-6">
-        <div className="relative">
-          <motion.div
-            animate={{ scale: [1, 1.25, 1], opacity: [0.08, 0.25, 0.08] }}
-            transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-            className="absolute -inset-8 bg-medical-cyan rounded-full blur-2xl"
-          />
-          <div className="relative bg-medical-cyan/10 p-7 rounded-full border border-medical-cyan/20">
-            <Bluetooth className={`w-12 h-12 text-medical-cyan ${isSearching ? "animate-pulse" : ""}`} />
+      {/* ── Radar Visual ── */}
+      <div className="relative flex-1 flex items-center justify-center w-full max-w-xs mx-auto">
+        <AnimatePresence>
+          {isSearching && (
+            <>
+              {/* Concentric Pulses */}
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={`pulse-${i}`}
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 2.2, opacity: [0, 0.4, 0] }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    delay: i * 1,
+                    ease: "easeOut"
+                  }}
+                  className="absolute w-24 h-24 border border-medical-cyan/30 rounded-full"
+                />
+              ))}
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Central Device Mockup */}
+        <div className="relative z-10 p-6 rounded-[2.5rem] bg-black/40 border border-white/10 shadow-2xl">
+          <div className="w-16 h-28 border-2 border-white/20 rounded-[1.2rem] flex flex-col items-center justify-center p-2">
+            <div className="w-8 h-1 bg-white/10 rounded-full mb-auto" />
+            <Smartphone className={`w-8 h-8 text-white/40 ${isSearching ? "animate-pulse" : ""}`} />
+            <Search className="w-3 h-3 text-medical-cyan absolute" strokeWidth={3} />
+            <div className="w-2 h-2 rounded-full border border-white/10 mt-auto" />
           </div>
         </div>
+      </div>
 
-        <div className="text-center space-y-1.5">
-          <p className="text-white font-semibold">{isSearching ? t("looking_for_devices") : t("how_to_pair")}</p>
-          <p className="text-sm text-gray-500">
-            {isSearching ? "Scanning for BLE devices…" : "Ready to discover your meter"}
+      {/* ── Status & Instructions ── */}
+      <div className="w-full space-y-8">
+        <div className="text-center space-y-3 px-6">
+          <p className="text-sm text-gray-400 leading-relaxed">
+            Make sure <span className="text-white font-semibold">Bluetooth</span> is turned on and the app has permission to access it
           </p>
         </div>
 
-        {!isSearching && (
-          <button
-            onClick={simulateSearch}
-            className="w-full py-4 bg-medical-cyan/10 text-medical-cyan border border-medical-cyan/20 font-bold rounded-2xl hover:bg-medical-cyan/20 transition-all uppercase tracking-widest text-sm"
-          >
-            {t("start_analyzing")}
-          </button>
-        )}
-
-        {isSearching && (
-          <div className="flex gap-1.5 items-end h-8">
-            {[0, 1, 2, 3, 4].map(i => (
+        {/* ── Found Devices List ── */}
+        <div className="space-y-3 px-2">
+          <AnimatePresence>
+            {discoveredDevices.map((device) => (
               <motion.div
-                key={i}
-                animate={{ height: [6, 28, 6] }}
-                transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.1 }}
-                className="w-1.5 bg-medical-cyan rounded-full shadow-[0_0_10px_#06b6d4]"
-              />
+                key={device.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={() => {
+                  setSelectedDiscoveredDevice(device);
+                  nextStep();
+                }}
+                className="w-full p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center gap-4 cursor-pointer hover:bg-white/5 active:scale-[0.98] transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-medical-cyan/10 flex items-center justify-center">
+                  <Image src={device.image} alt="" width={32} height={32} className="object-contain p-1" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-white font-bold text-sm">{device.name}</p>
+                  <p className="text-[10px] text-gray-500 font-medium">
+                    {device.brand} • Signal: {device.signal > -65 ? "strong" : device.signal > -80 ? "good" : "poor"} ({device.signal} dBm)
+                  </p>
+                </div>
+                <div className="flex items-end gap-0.5 h-3">
+                  {[1, 2, 3].map(bar => (
+                    <div 
+                      key={bar} 
+                      className={`w-1 rounded-full ${bar <= (device.signal > -65 ? 3 : device.signal > -80 ? 2 : 1) ? "bg-medical-cyan shadow-[0_0_8px_#06b6d4]" : "bg-white/10"}`} 
+                      style={{ height: `${33 * bar}%` }} 
+                    />
+                  ))}
+                </div>
+              </motion.div>
             ))}
+          </AnimatePresence>
+        </div>
+
+        {/* ── Action Buttons ── */}
+        {!isSearching && discoveredDevices.length === 0 && (
+          <div className="px-6 space-y-4">
+            <button
+              onClick={handleRealDiscovery}
+              className="w-full py-4 bg-medical-cyan text-black font-black rounded-2xl shadow-lg transition-all uppercase tracking-widest text-sm"
+            >
+              Start Scanning
+            </button>
           </div>
         )}
+
+        <div className="text-center space-y-3 pt-4">
+          <p className="text-[11px] text-gray-500">If your device is not discovered - please try adding it manually</p>
+          <button
+            onClick={nextStep}
+            className="w-full max-w-[200px] h-12 mx-auto bg-medical-primary text-black font-extrabold rounded-full text-xs shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+          >
+            Manually
+          </button>
+        </div>
       </div>
     </div>
   );
 
-  // ── Step 3: Secure Pairing ─────────────────────────────────────────────────────
-  const Step3 = () => (
+  // ── Step 3: Connection Confirmation ───────────────────────────────────────────
+  const Step3 = () => {
+    const activeDevice = selectedDiscoveredDevice || selectedDevice;
+    
+    return (
+      <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-500">
+        
+          {/* ── Device Image Hero ── */}
+        <div className="flex justify-center mb-8">
+          <div className="relative w-40 h-40">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="relative z-10 w-full h-full"
+            >
+              {activeDevice && (
+                <Image 
+                  src={activeDevice.image} 
+                  alt={activeDevice.name} 
+                  fill 
+                  className="object-contain drop-shadow-[0_20px_50px_rgba(255,255,255,0.1)]" 
+                />
+              )}
+            </motion.div>
+          </div>
+        </div>
+
+        {/* ── Specs Table Card ── */}
+        <div className="bg-[#1c1c1e] rounded-2xl overflow-hidden border border-white/5 mb-4">
+          <div className="p-4 space-y-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Device name</label>
+              <div className="bg-black/20 border border-white/10 rounded-xl px-4 py-3">
+                <p className="text-sm font-semibold text-white">{activeDevice?.name}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500 font-medium">Vendor</span>
+                <span className="text-medical-primary font-bold">{activeDevice?.brand}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500 font-medium">Model</span>
+                <span className="text-white font-medium">{activeDevice?.name}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500 font-medium">Bluetooth name</span>
+                <span className="text-white font-mono text-xs">{activeDevice?.name || "Ready"}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500 font-medium">Status</span>
+                <span className="text-white font-medium">Ready to collect data</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Production Toggles ── */}
+        <div className="space-y-3 mb-8">
+          {/* Toggle 1 */}
+          <div className="bg-[#1c1c1e] rounded-2xl p-4 border border-white/5 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <h4 className="text-sm font-bold text-white">Collect data automatically</h4>
+              <p className="text-[10px] text-gray-500">App has to be in the foreground with screen unlocked.</p>
+            </div>
+            <button 
+              onClick={() => setAutoCollect(!autoCollect)}
+              className={`w-12 h-6 rounded-full transition-colors relative ${autoCollect ? "bg-medical-primary shadow-[0_0_10px_#00e5ff]" : "bg-white/10"}`}
+            >
+              <motion.div 
+                animate={{ x: autoCollect ? 26 : 4 }}
+                className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-lg"
+              />
+            </button>
+          </div>
+
+          {/* Toggle 2 */}
+          <div className="bg-[#1c1c1e] rounded-2xl p-4 border border-white/5 flex items-center justify-between">
+            <h4 className="text-sm font-bold text-white">Keep history on device</h4>
+            <button 
+              onClick={() => setKeepHistory(!keepHistory)}
+              className={`w-12 h-6 rounded-full transition-colors relative ${keepHistory ? "bg-medical-primary shadow-[0_0_10px_#00e5ff]" : "bg-white/10"}`}
+            >
+              <motion.div 
+                animate={{ x: keepHistory ? 26 : 4 }}
+                className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-lg"
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Main Action ── */}
+        <button
+          onClick={() => {
+            // Respecting "Keep history on device" preference
+            console.log(`Setting persistence: ${keepHistory ? 'HISTORY PRESERVED' : 'HISTORY REMOVED ON SYNC'}`);
+            localStorage.setItem(`device_settings_${activeDevice?.id}`, JSON.stringify({ autoCollect, keepHistory }));
+            collectMeterMemory("real");
+          }}
+          className="btn-primary"
+        >
+          Collect Data
+        </button>
+      </div>
+    );
+  };
+
+  // ── Step 4: Secure Pairing ─────────────────────────────────────────────────────
+  const Step4 = () => (
     <div className="space-y-8">
       <AnimatePresence mode="wait">
         {pairingMethod === "choice" && (
@@ -887,7 +1196,7 @@ export default function ConnectionsPage() {
             <button
               disabled={pin.length < 6}
               onClick={nextStep}
-              className="w-full py-4 bg-medical-cyan text-black font-bold rounded-2xl shadow-lg shadow-medical-cyan/25 hover:opacity-90 disabled:opacity-30 transition-all"
+              className="btn-primary disabled:opacity-30"
             >
               {t("save_changes")}
             </button>
@@ -897,18 +1206,21 @@ export default function ConnectionsPage() {
     </div>
   );
 
-  // ── Step 4: Success + Memory Collection ──────────────────────────────────────
-  const Step4 = () => {
+  // ── Step 5: Success + Memory Collection ──────────────────────────────────────
+  const Step5 = () => {
     // Register device in local store on mount
     useEffect(() => {
-      if (selectedDevice) {
+      const activeDev = selectedDiscoveredDevice || selectedDevice;
+      if (activeDev) {
         setSavedDevices(prev => {
-          if (prev.find(d => d.id === selectedDevice.id)) return prev;
-          return [selectedDevice, ...prev].slice(0, 5);
+          if (prev.find(d => d.id === activeDev.id)) return prev;
+          return [activeDev, ...prev].slice(0, 5);
         });
       }
       fetchLatestFromDB();
     }, []);
+
+    const activeDevice = selectedDiscoveredDevice || selectedDevice;
 
     return (
       <div className="flex flex-col items-center space-y-6 animate-in fade-in duration-500">
@@ -919,14 +1231,14 @@ export default function ConnectionsPage() {
           <div className="relative">
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              className={`relative z-20 w-20 h-20 rounded-[1.6rem] flex items-center justify-center shadow-2xl ${isSyncing ? "bg-medical-cyan animate-pulse" : "bg-gradient-to-br from-emerald-400 to-emerald-600"}`}
+              className={`relative z-20 w-20 h-20 rounded-[1.6rem] flex items-center justify-center shadow-2xl ${isSyncing ? "bg-medical-primary animate-pulse shadow-[0_0_30px_#00e5ff]" : "bg-gradient-to-br from-medical-primary to-medical-primary-light"}`}
             >
-              {isSyncing ? <Bluetooth className="w-9 h-9 text-white" /> : <CheckCircle2 className="w-9 h-9 text-white" />}
+              {isSyncing ? <Bluetooth className="w-9 h-9 text-black" /> : <CheckCircle2 className="w-9 h-9 text-black" />}
             </motion.div>
             <motion.div
               animate={{ scale: [1, 1.6, 1], opacity: [0.4, 0, 0.4] }}
               transition={{ duration: 3, repeat: Infinity }}
-              className="absolute inset-0 border-2 border-emerald-500/30 rounded-[2.2rem] z-10"
+              className="absolute inset-0 border-2 border-medical-primary/30 rounded-[2.2rem] z-10"
             />
           </div>
           <div className="mt-6 text-center">
@@ -936,75 +1248,104 @@ export default function ConnectionsPage() {
             <div className="flex items-center justify-center gap-2 mt-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <p className="text-emerald-400/80 font-bold uppercase tracking-widest text-[10px]">
-                {selectedDevice?.name} · Secure Protocol
+                {activeDevice?.name} · Secure Protocol
               </p>
             </div>
           </div>
         </div>
 
         {/* ── Live Glucose Card ────────────────────────────────────────────── */}
-        <div className="w-full glass-card-premium rounded-[2.5rem] overflow-hidden border border-white/10">
-          {/* Header */}
-          <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl overflow-hidden border border-white/10 relative bg-black/40">
-                {selectedDevice && <Image src={selectedDevice.image} alt="" fill className="object-contain p-1.5" />}
-              </div>
-              <div>
-                <h3 className="text-white font-bold text-sm uppercase tracking-tight leading-none">{selectedDevice?.brand}</h3>
-                <p className="text-gray-500 text-[10px] mt-0.5">Protocol: READY</p>
-              </div>
-            </div>
-            {/* Battery */}
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] uppercase font-black text-gray-600 tracking-widest">PWR</span>
-              <div className="w-9 h-4 border border-white/20 rounded-[3px] p-0.5 relative">
-                <motion.div
-                  animate={{ width: `${batteryLevel}%`, backgroundColor: batteryLevel > 40 ? "#10b981" : "#ef4444" }}
-                  className="h-full rounded-[1px]"
-                />
-              </div>
-              <span className="text-xs font-bold text-white">{batteryLevel}%</span>
-            </div>
-          </div>
-
-          {/* Value */}
-          <div className="px-6 py-8 text-center relative overflow-hidden">
-            {isSyncing && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md z-30">
-                <div className="flex gap-1.5 items-end mb-3 h-8">
-                  {[0, 1, 2, 3].map(i => (
-                    <motion.div key={i} animate={{ height: [4, 28, 4] }} transition={{ repeat: Infinity, duration: 0.5, delay: i * 0.1 }}
-                      className="w-1.5 bg-medical-cyan rounded-full shadow-[0_0_10px_#06b6d4]" />
-                  ))}
+        <div className="w-full relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-medical-primary/20 to-medical-cyan/20 blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
+          <div className="relative w-full glass-card-premium rounded-[2.5rem] overflow-hidden border border-white/10 bg-black/40 backdrop-blur-3xl shadow-2xl">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl overflow-hidden border border-white/10 relative bg-black/60 p-1 flex items-center justify-center">
+                  {activeDevice && (
+                    <Image 
+                      src={activeDevice.image} 
+                      alt="" 
+                      width={40} 
+                      height={40} 
+                      className="object-contain drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]" 
+                    />
+                  )}
                 </div>
-                <p className="text-[10px] font-black text-medical-cyan uppercase tracking-widest">Reading Last Record…</p>
+                <div>
+                  <h3 className="text-white font-black text-xs uppercase tracking-[0.15em] leading-none">{activeDevice?.brand}</h3>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <div className="w-1 h-1 rounded-full bg-medical-cyan shadow-[0_0_5px_#06b6d4]" />
+                    <p className="text-medical-cyan font-bold text-[9px] uppercase tracking-widest">Protocol Active</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Battery & Signal */}
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col items-end gap-1">
+                   <div className="w-8 h-3.5 border border-white/20 rounded-[3px] p-0.5 relative">
+                    <motion.div
+                      animate={{ width: `${batteryLevel}%`, backgroundColor: batteryLevel > 40 ? "#10b981" : "#ef4444" }}
+                      className="h-full rounded-[1px] shadow-[0_0_5px_rgba(16,185,129,0.3)]"
+                    />
+                  </div>
+                  <span className="text-[10px] font-bold text-white/40 tracking-tighter">{batteryLevel}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Value Display */}
+            <div className="px-6 py-10 text-center relative overflow-hidden">
+              {/* Background Glow */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-medical-primary/10 blur-[50px] rounded-full pointer-events-none" />
+              
+              <div className="inline-flex items-baseline gap-2 relative z-10">
+                <motion.span
+                  key={lastReading ?? "null"}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-7xl font-black text-white tracking-tighter italic drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+                >
+                  {lastReading ? convertGlucose(lastReading, unit) : "---"}
+                </motion.span>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-black text-emerald-400/80 uppercase tracking-tighter -mt-1">{unit === "mg/dL" ? "mg/dL" : getUnitLabel(unit, t)}</span>
+                  <div className="flex items-center gap-1">
+                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">Live</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Tags */}
+              <div className="flex justify-center gap-2 mt-6">
+                <div className="px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center gap-2">
+                  <Bluetooth className="w-3 h-3 text-medical-cyan" />
+                  <span className="text-[9px] font-black text-white/60 uppercase tracking-widest">BLE Stream</span>
+                </div>
+                <div className="px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/5">
+                  <span className="text-[9px] font-black text-white/60 uppercase tracking-widest">SECURE LINK</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Sub-footer Message */}
+            {isSyncing && (
+              <div className="px-6 py-3 bg-medical-primary/10 flex items-center justify-center gap-3">
+                <motion.div 
+                  animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  className="w-3 h-3 border-2 border-transparent border-t-medical-primary rounded-full" 
+                />
+                <span className="text-[10px] font-black text-medical-primary uppercase tracking-[0.2em]">Synchronizing local cache...</span>
               </div>
             )}
-            <div className="inline-flex items-baseline gap-2">
-              <motion.span
-                key={lastReading ?? "null"}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                className="text-6xl font-black text-white tracking-tighter italic"
-              >
-                {lastReading ? convertGlucose(lastReading, unit) : "---"}
-              </motion.span>
-              <span className="text-lg font-bold text-emerald-500/60 uppercase">{unit === "mg/dL" ? "mg/dL" : getUnitLabel(unit, t)}</span>
-            </div>
-            <div className="flex justify-center gap-3 mt-4">
-              <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]" />
-                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Live Protocol</span>
-              </div>
-              <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">ISO-15197</span>
-              </div>
-            </div>
           </div>
         </div>
 
         {/* ── Meter Memory Section ─────────────────────────────────────────── */}
         <MemorySection
+          discoveryMode={discoveryMode.current}
           memoryView={memoryView}
           meterMemory={meterMemory}
           selectedReadings={selectedReadings}
@@ -1022,13 +1363,13 @@ export default function ConnectionsPage() {
         <div className="w-full flex flex-col gap-3 pb-10">
           <button
             onClick={() => router.push("/dashboard")}
-            className="w-full py-5 bg-emerald-500 text-black font-black uppercase tracking-widest text-sm rounded-[2rem] shadow-[0_16px_40px_rgba(16,185,129,0.3)] hover:opacity-90 transition-all flex items-center justify-center gap-2"
+            className="btn-primary"
           >
             <CheckCircle2 className="w-5 h-5" />
             {t("done")} · Complete
           </button>
           <button
-            onClick={() => handleDisconnect(selectedDevice?.id ?? "")}
+            onClick={() => handleDisconnect(activeDevice?.id ?? "")}
             className="w-full py-3.5 text-red-500/60 font-black text-xs uppercase tracking-[0.3em] hover:text-red-500 transition-all"
           >
             {t("disconnect") || "Secure Disconnect"}
@@ -1038,58 +1379,67 @@ export default function ConnectionsPage() {
     );
   };
 
+
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────────
-  return (
-    <div className="min-h-screen bg-[#050a0f] text-white selection:bg-medical-cyan/30">
-      {/* Sticky Header & Progress */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#050a0f]/80 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-md mx-auto px-6 py-4 flex items-center justify-between">
-          <button onClick={() => step === 0 ? router.back() : prevStep()}
-            className="p-2 -ml-2 rounded-full hover:bg-white/5 transition-colors">
-            <ArrowLeft className="w-6 h-6 text-gray-400" />
-          </button>
-          <h1 className="text-base font-bold tracking-tight">{t("connections")}</h1>
-          <div className="w-10" />
-        </div>
-        <div className="h-0.5 w-full bg-white/5 overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }} animate={{ width: `${progress}%` }}
-            className="h-full bg-medical-cyan shadow-[0_0_8px_rgba(6,182,212,0.8)]"
-          />
-        </div>
-      </div>
 
-      <main className="max-w-md mx-auto px-6 pt-24 pb-12 relative z-10">
+  return (
+    <div className="min-h-screen bg-[#050505] text-white p-6 relative overflow-x-hidden md:p-8">
+      {/* Background Decor */}
+      <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-medical-cyan/5 blur-[120px] rounded-full -mr-64 -mt-64 pointer-events-none" />
+      <div className="fixed bottom-0 left-0 w-[400px] h-[400px] bg-medical-primary/5 blur-[100px] rounded-full -ml-48 -mb-48 pointer-events-none" />
+
+      <div className="max-w-xl mx-auto space-y-8 relative z-10">
+        {/* Header with Progress */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={prevStep}
+              className={`p-2 -ml-2 rounded-xl hover:bg-white/5 transition-all text-gray-500 hover:text-white ${step === 0 && "opacity-0 cursor-default"}`}
+              disabled={step === 0}
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-1">Step {step + 1} of {totalSteps}</span>
+              <div className="flex gap-1.5">
+                {[...Array(totalSteps)].map((_, i) => (
+                  <div key={i} className={`h-1 rounded-full transition-all duration-500 ${i === step ? "w-6 bg-medical-cyan" : i < step ? "w-2 bg-emerald-500/50" : "w-1.5 bg-white/10"}`} />
+                ))}
+              </div>
+            </div>
+            <button onClick={() => router.push("/dashboard")} className="p-2 -mr-2 text-gray-500 hover:text-white transition-all">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        {/* Dynamic Step View */}
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }}
-            className="w-full"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.4, ease: "circOut" }}
           >
             {step === 0 && <Step0 />}
             {step === 1 && <Step1 />}
             {step === 2 && <Step2 />}
             {step === 3 && <Step3 />}
             {step === 4 && <Step4 />}
+            {step === 5 && <Step5 />}
           </motion.div>
         </AnimatePresence>
-      </main>
-
-      {/* Background Orbs */}
-      <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
-        <div className="absolute top-1/4 -right-20 w-80 h-80 bg-medical-cyan/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-1/4 -left-20 w-80 h-80 bg-medical-blue/10 blur-[120px] rounded-full" />
       </div>
     </div>
   );
 }
 
-// ─── Memory Section Component ─────────────────────────────────────────────────
 
 interface MemorySectionProps {
+  discoveryMode: "real" | "demo";
   memoryView: MemoryView;
   meterMemory: MeterReading[];
   selectedReadings: Set<string>;
@@ -1104,7 +1454,7 @@ interface MemorySectionProps {
 }
 
 function MemorySection({
-  memoryView, meterMemory, selectedReadings, saveProgress, saveError,
+  discoveryMode, memoryView, meterMemory, selectedReadings, saveProgress, saveError,
   unit, onCollect, onToggle, onToggleAll, onSave, onReset,
 }: MemorySectionProps) {
   const allSelected = meterMemory.length > 0 && selectedReadings.size === meterMemory.length;
@@ -1125,8 +1475,8 @@ function MemorySection({
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-medical-cyan/10 blur-2xl rounded-full -mr-12 -mt-12" />
             <div className="flex items-center gap-4 relative z-10">
-              <div className="w-12 h-12 rounded-2xl bg-medical-cyan/20 border border-medical-cyan/30 flex items-center justify-center flex-shrink-0">
-                <Bluetooth className="w-6 h-6 text-medical-cyan animate-pulse" />
+              <div className="w-12 h-12 rounded-2xl bg-medical-primary/20 border border-medical-primary/30 flex items-center justify-center flex-shrink-0">
+                <Bluetooth className="w-6 h-6 text-medical-primary animate-pulse" />
               </div>
               <div className="text-left flex-1">
                 <h3 className="font-bold text-white text-sm">Real Meter Discovery</h3>
@@ -1189,23 +1539,37 @@ function MemorySection({
           className="w-full rounded-3xl border border-white/10 bg-[#0a1219]/80 backdrop-blur-2xl overflow-hidden"
         >
           {/* Table Header */}
-          <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <HardDrive className="w-4 h-4 text-medical-cyan" />
-              <div>
-                <h4 className="text-xs font-black text-white uppercase tracking-wide">Device Memory</h4>
-                <p className="text-[9px] text-gray-500 mt-0.5">{meterMemory.length} readings collected</p>
+          <div className="px-5 py-4 border-b border-white/5 space-y-3">
+            {discoveryMode === "demo" && (
+              <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-2">
+                <Info className="w-3.5 h-3.5 text-amber-500" />
+                <p className="text-[10px] text-amber-500/80 font-bold uppercase tracking-tight">Review Simulation Data · Accuracy Check Required</p>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {memoryView === "saved" && (
-                <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">
-                  {savedCount} Saved
-                </span>
-              )}
-              <button onClick={onReset} className="p-1.5 rounded-lg hover:bg-white/5 transition-all text-gray-500 hover:text-gray-300">
-                <X className="w-4 h-4" />
-              </button>
+            )}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <HardDrive className={`w-4 h-4 ${discoveryMode === "real" ? "text-medical-primary" : "text-gray-500"}`} />
+                <div className="min-w-0">
+                  <h4 className="text-xs font-black text-white uppercase tracking-wide truncate">
+                    {discoveryMode === "real" ? "Live Meter Feed" : "Simulated Memory"}
+                  </h4>
+                  <p className="text-[9px] text-gray-500 mt-0.5 whitespace-nowrap">{meterMemory.length} readings ready</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {memoryView === "saved" && savedCount > 0 && (
+                  <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider whitespace-nowrap">
+                    {savedCount} Saved
+                  </span>
+                )}
+                <button onClick={onToggleAll} className="px-2.5 py-1.5 rounded-lg border border-white/10 text-[9px] font-black uppercase text-gray-400 hover:text-white transition-colors whitespace-nowrap">
+                  {allSelected ? "Deselect" : "Select All"}
+                </button>
+                <button onClick={onReset} className="p-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-all text-gray-500 hover:text-red-400" title="Clear All">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1215,7 +1579,7 @@ function MemorySection({
             <button
               onClick={onToggleAll}
               disabled={memoryView !== "ready"}
-              className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${allSelected ? "bg-medical-cyan border-medical-cyan" : "border-white/20 hover:border-medical-cyan/50"} disabled:opacity-40`}
+              className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${allSelected ? "bg-medical-primary border-medical-primary shadow-[0_0_10px_#00e5ff]" : "border-white/20 hover:border-medical-primary/50"} disabled:opacity-40`}
             >
               {allSelected && <CheckCircle2 className="w-3 h-3 text-black" strokeWidth={3} />}
             </button>
@@ -1243,7 +1607,7 @@ function MemorySection({
                   className={`px-5 py-3 grid grid-cols-[auto_1fr_auto_auto] gap-3 items-center transition-all ${memoryView === "ready" ? "cursor-pointer hover:bg-white/[0.04]" : ""} ${isSelected && !reading.isSaved ? "bg-medical-cyan/5" : ""} ${reading.isSaved ? "opacity-60" : ""}`}
                 >
                   {/* Checkbox */}
-                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-all ${reading.isSaved ? "bg-emerald-500/20 border-emerald-500/40" : isSelected ? "bg-medical-cyan border-medical-cyan" : "border-white/15"}`}>
+                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-all ${reading.isSaved ? "bg-emerald-500/20 border-emerald-500/40" : isSelected ? "bg-medical-primary border-medical-primary shadow-[0_0_10px_#00e5ff]" : "border-white/15"}`}>
                     {(isSelected || reading.isSaved) && (
                       <CheckCircle2 className={`w-3 h-3 ${reading.isSaved ? "text-emerald-400" : "text-black"}`} strokeWidth={3} />
                     )}
@@ -1316,10 +1680,10 @@ function MemorySection({
               <button
                 onClick={onSave}
                 disabled={selectedReadings.size === 0}
-                className="w-full py-4 bg-gradient-to-r from-medical-cyan to-emerald-400 text-black font-black rounded-2xl shadow-lg shadow-medical-cyan/20 hover:opacity-90 disabled:opacity-30 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-sm"
+                className="btn-primary shadow-[0_10px_30px_rgba(0,229,255,0.2)]"
               >
                 <CloudUpload className="w-5 h-5" />
-                Save {selectedReadings.size} Reading{selectedReadings.size !== 1 ? "s" : ""} to Database
+                Save {selectedReadings.size} Reading{selectedReadings.size !== 1 ? "s" : ""}
               </button>
             )}
 
@@ -1455,18 +1819,4 @@ function QRScanner({ onResult, onFallback }: { onResult: (res: string) => void; 
   );
 }
 
-// ─── InstructionItem ──────────────────────────────────────────────────────────
 
-function InstructionItem({ icon, text, step }: { icon: React.ReactNode; text: string; step: number }) {
-  return (
-    <div className="flex gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-xl">
-      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-medical-cyan/10 border border-medical-cyan/20 flex items-center justify-center font-bold text-medical-cyan">
-        {step}
-      </div>
-      <div className="flex-1 flex items-center">
-        <p className="text-gray-200 font-medium">{text}</p>
-      </div>
-      <div className="flex-shrink-0 flex items-center">{icon}</div>
-    </div>
-  );
-}
