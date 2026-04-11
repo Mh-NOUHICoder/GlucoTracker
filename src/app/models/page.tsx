@@ -40,6 +40,20 @@ export default function ProfileSettingsPage() {
   const [targetMin, setTargetMin] = useState(70);
   const [targetMax, setTargetMax] = useState(180);
   const [activeTab, setActiveTab] = useState("profile");
+
+  // Load active tab from localStorage
+  useEffect(() => {
+    const savedTab = localStorage.getItem("settings_active_tab");
+    if (savedTab) {
+      setActiveTab(savedTab);
+    }
+  }, []);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    localStorage.setItem("settings_active_tab", tabId);
+  };
+
   const [showConfirm, setShowConfirm] = useState(false);
 
 
@@ -55,6 +69,9 @@ export default function ProfileSettingsPage() {
   const [waterInterval, setWaterInterval] = useState(1);
   const [waterUnit, setWaterUnit] = useState("hours");
   const [inactivityDays, setInactivityDays] = useState(2);
+  const [showDaysMenu, setShowDaysMenu] = useState(false);
+  const [showUnitMenu, setShowUnitMenu] = useState(false);
+  const [showModelMenu, setShowModelMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -110,6 +127,7 @@ export default function ProfileSettingsPage() {
     localStorage.setItem("water_unit", waterUnit);
     localStorage.setItem("inactivity_days", inactivityDays.toString());
 
+    window.dispatchEvent(new Event("settings-update"));
     toast.success(t("profile_updated"));
   };
 
@@ -149,16 +167,19 @@ export default function ProfileSettingsPage() {
     localStorage.setItem("preferredModelId", id);
     const model = models.find(m => m.id === id);
     if (model) localStorage.setItem("preferredModelProvider", model.provider);
+    window.dispatchEvent(new Event("settings-update"));
   };
 
   const handleUnitToggle = (val: string) => {
     setUnit(val);
     localStorage.setItem("glucose_unit", val);
+    window.dispatchEvent(new Event("settings-update"));
   };
 
   const handleRangeSave = () => {
     localStorage.setItem("target_min", targetMin.toString());
     localStorage.setItem("target_max", targetMax.toString());
+    window.dispatchEvent(new Event("settings-update"));
     toast.success("Target ranges updated successfully.");
   };
 
@@ -214,7 +235,7 @@ export default function ProfileSettingsPage() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`relative flex items-center justify-center gap-2 px-5 py-3 min-w-max rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex-1 ${
                     isActive 
                       ? "text-white" 
@@ -328,7 +349,10 @@ export default function ProfileSettingsPage() {
             {/* General Section */}
             {activeTab === "general" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-medical-dark/40 border border-white/5 p-8 rounded-3xl space-y-6 shadow-xl backdrop-blur-md">
+                  <div 
+                    className="bg-medical-dark/40 border border-white/5 p-8 rounded-3xl space-y-6 shadow-xl backdrop-blur-md relative"
+                    style={{ zIndex: showUnitMenu ? 50 : 1 }}
+                  >
                     <div className="flex items-center gap-4">
                       <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
                         <Droplets className="w-6 h-6" />
@@ -338,20 +362,59 @@ export default function ProfileSettingsPage() {
                         <p className="text-xs text-gray-500 font-medium">{t("choose_preferred_unit")}</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      {["mg/dL", "mmol/L", "g/L"].map((u) => (
-                        <button
-                          key={u}
-                          onClick={() => handleUnitToggle(u)}
-                          className={`py-4 rounded-2xl font-black text-xl border transition-all ${
-                            unit === u 
-                              ? "bg-medical-cyan border-medical-cyan text-white shadow-xl shadow-medical-cyan/20" 
-                              : "bg-medical-black/50 border-white/10 text-gray-500 hover:border-white/20 hover:bg-medical-black"
-                          }`}
-                        >
-                          {u}
-                        </button>
-                      ))}
+                    <div className="grid grid-cols-1 gap-6">
+                      <div className="space-y-4">
+                        <div className="relative w-full">
+                           <button 
+                             onClick={() => setShowUnitMenu(!showUnitMenu)}
+                             className="w-full flex items-center justify-between bg-medical-black/50 hover:bg-medical-black/80 px-6 py-4 rounded-2xl border border-white/5 transition-all group shadow-inner"
+                           >
+                             <div className="flex items-center gap-4">
+                               <div className="p-3 rounded-xl bg-medical-cyan/10 text-medical-cyan group-hover:bg-medical-cyan group-hover:text-white transition-all shadow-lg">
+                                 <Droplets className="w-5 h-5" />
+                               </div>
+                               <div className="flex flex-col items-start">
+                                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-gray-300">{t("unit_pref")}</span>
+                                 <span className="text-xl font-black text-white">{unit}</span>
+                               </div>
+                             </div>
+                             <div className={`p-1 rounded-lg transition-transform ${showUnitMenu ? 'rotate-180' : ''}`}>
+                               <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-medical-cyan rotate-90" />
+                             </div>
+                           </button>
+
+                           <AnimatePresence>
+                             {showUnitMenu && (
+                               <motion.div
+                                 initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                                 animate={{ opacity: 1, y: 0, scale: 1 }}
+                                 exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                                 className="absolute left-0 right-0 mt-3 p-2 bg-medical-black/98 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.6)] z-[100] overflow-hidden"
+                               >
+                                 <div className="grid grid-cols-1 gap-1">
+                                   {["mg/dL", "mmol/L", "g/L"].map((u) => (
+                                     <button
+                                       key={u}
+                                       onClick={() => {
+                                         handleUnitToggle(u);
+                                         setShowUnitMenu(false);
+                                       }}
+                                       className={`flex items-center justify-between px-5 py-4 rounded-xl transition-all ${
+                                         unit === u 
+                                           ? "bg-medical-cyan text-white shadow-lg shadow-medical-cyan/30" 
+                                           : "text-gray-400 hover:text-white hover:bg-white/10"
+                                       }`}
+                                     >
+                                       <span className="text-lg font-black">{u}</span>
+                                       {unit === u && <CheckCircle className="w-5 h-5" />}
+                                     </button>
+                                   ))}
+                                 </div>
+                               </motion.div>
+                             )}
+                           </AnimatePresence>
+                        </div>
+                      </div>
                     </div>
                   </div>
   
@@ -398,7 +461,10 @@ export default function ProfileSettingsPage() {
   
             {/* AI Section */}
             {activeTab === "ai" && (
-              <div className="bg-medical-dark/40 border border-white/5 p-8 rounded-3xl shadow-xl backdrop-blur-md">
+              <div 
+                className="bg-medical-dark/40 border border-white/5 p-8 rounded-3xl shadow-xl backdrop-blur-md relative"
+                style={{ zIndex: showModelMenu ? 50 : 1 }}
+              >
                   <div className="flex items-center gap-4 mb-8">
                     <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
                       <Cpu className="w-6 h-6" />
@@ -409,38 +475,81 @@ export default function ProfileSettingsPage() {
                     </div>
                   </div>
   
-                  <div className="grid gap-3">
-                    {loadingModels ? (
-                      [1,2,3].map(i => <div key={i} className="h-20 bg-medical-black/50 rounded-2xl animate-pulse" />)
-                    ) : models.length > 0 ? (
-                      models.map((m) => {
-                        const isSelected = selectedModelId === m.id;
-                        return (
-                          <button
-                            key={m.id}
-                            onClick={() => handleModelSelect(m.id)}
-                            className={`w-full text-left p-5 rounded-2xl flex items-center justify-between border transition-all group ${
-                              isSelected 
-                                ? "border-medical-cyan bg-medical-cyan/5 shadow-[0_0_15px_rgba(6,182,212,0.1)]" 
-                                : "border-white/5 bg-medical-black/20 hover:border-white/20"
-                            }`}
-                          >
-                            <div className="flex items-center gap-4">
-                               <div className={`w-2 h-2 rounded-full ${isSelected ? "bg-medical-cyan animate-pulse shadow-[0_0_8px_#06b6d4]" : "bg-gray-700"}`} />
-                               <div>
-                                 <h4 className="font-bold text-white group-hover:text-medical-cyan transition-colors">{m.name}</h4>
-                                 <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{m.provider}</span>
-                               </div>
+                  <div className="relative w-full">
+                     <button 
+                       onClick={() => setShowModelMenu(!showModelMenu)}
+                       className="w-full flex items-center justify-between bg-medical-black/50 hover:bg-medical-black/80 px-6 py-5 rounded-2xl border border-white/5 transition-all group shadow-inner"
+                     >
+                       <div className="flex items-center gap-5">
+                          <div className="p-4 rounded-2xl bg-purple-500/10 text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-all shadow-lg border border-purple-500/20">
+                            <Cpu className="w-6 h-6" />
+                          </div>
+                          <div className="flex flex-col items-start">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-1">{t("ai_engine")}</span>
+                            <div className="flex items-center gap-3">
+                               <span className="text-xl font-black text-white">
+                                 {models.find(m => m.id === selectedModelId)?.name || t("select_model") || "Select Model"}
+                               </span>
+                               {selectedModelId && (
+                                 <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-bold text-gray-400 uppercase tracking-widest">
+                                   {models.find(m => m.id === selectedModelId)?.provider}
+                                 </span>
+                               )}
                             </div>
-                            {isSelected && <CheckCircle className="w-5 h-5 text-medical-cyan" />}
-                          </button>
-                        )
-                      })
-                    ) : (
-                      <div className="p-10 text-center bg-red-500/5 border border-red-500/20 rounded-2xl text-red-400 text-sm italic">
-                        No vision models found. Check your API keys in environment variables.
-                      </div>
-                    )}
+                          </div>
+                       </div>
+                       <div className={`p-1.5 rounded-lg transition-transform ${showModelMenu ? 'rotate-180' : ''}`}>
+                          <ChevronRight className="w-6 h-6 text-gray-600 group-hover:text-purple-400 rotate-90" />
+                       </div>
+                     </button>
+
+                     <AnimatePresence>
+                       {showModelMenu && (
+                         <motion.div
+                           initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                           animate={{ opacity: 1, y: 0, scale: 1 }}
+                           exit={{ opacity: 0, y: 15, scale: 0.98 }}
+                           className="absolute left-0 right-0 mt-4 p-2 bg-medical-black/98 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-[0_30px_60px_rgba(0,0,0,0.6)] z-50 overflow-hidden max-h-[400px] overflow-y-auto no-scrollbar"
+                         >
+                           <div className="grid grid-cols-1 gap-1.5">
+                             {loadingModels ? (
+                               [1,2,3].map(i => <div key={i} className="h-16 bg-white/5 rounded-2xl animate-pulse mx-2 my-1" />)
+                             ) : models.length > 0 ? (
+                               models.map((m) => {
+                                 const isSelected = selectedModelId === m.id;
+                                 return (
+                                   <button
+                                     key={m.id}
+                                     onClick={() => {
+                                       handleModelSelect(m.id);
+                                       setShowModelMenu(false);
+                                     }}
+                                     className={`w-full text-left p-4 rounded-2xl flex items-center justify-between transition-all group/item ${
+                                       isSelected 
+                                         ? "bg-purple-500 text-white shadow-xl shadow-purple-500/20" 
+                                         : "text-gray-400 hover:text-white hover:bg-white/5"
+                                     }`}
+                                   >
+                                     <div className="flex items-center gap-4">
+                                        <div className={`w-2 h-2 rounded-full ${isSelected ? "bg-white animate-pulse" : "bg-gray-700"}`} />
+                                        <div>
+                                          <div className={`font-black tracking-tight ${isSelected ? "text-white" : "text-gray-200"}`}>{m.name}</div>
+                                          <span className={`text-[9px] uppercase tracking-widest font-bold ${isSelected ? "text-purple-100" : "text-gray-500"}`}>{m.provider}</span>
+                                        </div>
+                                     </div>
+                                     {isSelected && <CheckCircle className="w-5 h-5 text-white" />}
+                                   </button>
+                                 )
+                               })
+                             ) : (
+                               <div className="p-8 text-center text-red-400 text-xs italic">
+                                 No vision models found.
+                               </div>
+                             )}
+                           </div>
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
                   </div>
               </div>
             )}
@@ -460,89 +569,127 @@ export default function ProfileSettingsPage() {
                   </div>
                   <button 
                      onClick={() => {
-                       try {
-                         const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-                         if (AudioContextClass) {
-                           const ctx = new AudioContextClass();
-                           const osc = ctx.createOscillator();
-                           const gainNode = ctx.createGain();
-                           osc.type = "sine";
-                           osc.frequency.setValueAtTime(880, ctx.currentTime);
-                           osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1);
-                           gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
-                           gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-                           osc.connect(gainNode);
-                           gainNode.connect(ctx.destination);
-                           osc.start();
-                           osc.stop(ctx.currentTime + 0.5);
-                         }
-                       } catch (e) {
-                         console.error(e);
-                       }
-                       if ("Notification" in window) {
-                         if (Notification.permission === "granted") {
-                           navigator.serviceWorker.ready.then((registration) => {
-                               registration.showNotification(t("gluco_reminder_title") || "Test Notification", {
-                                 body: "This is a high-visibility test notification. 🔔",
-                                 icon: "/glucotracker.png",
-                                 badge: "/glucotracker.png",
-                                 silent: false,
-                                 vibrate: [500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450, 110, 200, 110, 170, 40, 500],
-                                 requireInteraction: true,
-                                 tag: "test_notification",
-                                 renotify: true
-                               } as any);
-                             }).catch(() => {
-                               new Notification(t("gluco_reminder_title") || "Test Notification", { 
-                                 body: "This is a high-visibility test notification. 🔔", 
-                                 icon: "/glucotracker.png", 
-                                 silent: false,
-                                 requireInteraction: true 
-                               } as any);
-                           });
-                         } else if (Notification.permission !== "denied") {
-                           Notification.requestPermission().then((permission) => {
-                             if (permission === 'granted') toast.success("Permission granted! Click again to test.");
-                           });
-                         } else {
-                           toast.error("Notification permission denied.");
-                         }
-                       }
+                        if (!("Notification" in window)) {
+                          toast.error("Not supported in this browser");
+                          return;
+                        }
+
+                        if (Notification.permission === "denied") {
+                          toast.error("Permission denied. Enable in settings.");
+                          return;
+                        }
+
+                        const sendTest = () => {
+                           toast.info("Sending test alert...");
+                           const options = {
+                             body: "High-visibility test alert. Digital Health Check! \uD83D\uDD14",
+                             icon: "/glucotracker.png",
+                             badge: "/glucotracker.png",
+                             vibrate: [500, 110, 500, 110, 450, 110, 200],
+                             requireInteraction: true,
+                             tag: "test_notif",
+                             renotify: true
+                           } as any;
+
+                           if (navigator.serviceWorker.controller) {
+                              navigator.serviceWorker.ready.then(reg => {
+                                 reg.showNotification("DiabLab Test", options);
+                                 toast.success("Push Notification Sent!");
+                              }).catch(() => {
+                                 new Notification("DiabLab Test", options);
+                                 toast.success("Standard Notification Sent!");
+                              });
+                           } else {
+                              new Notification("DiabLab Test", options);
+                              toast.success("Standard Notification Sent!");
+                           }
+                        };
+
+                        if (Notification.permission === "default") {
+                          Notification.requestPermission().then(p => {
+                            if (p === "granted") sendTest();
+                            else toast.error("Permission was not granted.");
+                          });
+                        } else {
+                          sendTest();
+                        }
                      }}
-                     className="sm:mx-0 w-full sm:w-auto px-4 py-3 sm:py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
+                     className="sm:mx-0 w-full sm:w-auto px-6 py-3 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
                   >
                      <Bell className="w-4 h-4" />
-                     Test
+                     Test Notification
                   </button>
                 </div>
 
                 <div className="space-y-8">
                   {/* Glucose Alerts */}
-                  <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/5 space-y-8 shadow-xl">
+                  <div 
+                    className="p-8 rounded-[2.5rem] bg-white/5 border border-white/5 space-y-8 shadow-xl relative"
+                    style={{ zIndex: showDaysMenu ? 50 : 1 }}
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-6 flex-1">
                         <div className="text-xl font-bold text-white flex items-center gap-3">
                           <Bell className="w-5 h-5 text-medical-cyan" /> {t("glucose_check_alert")}
                         </div>
                         
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest opacity-60 ml-px flex items-center gap-2">
                              <RotateCcw className="w-3 h-3" /> {t("remind_every")}
                            </span>
-                           <div className="flex bg-medical-black/50 p-1.5 rounded-2xl border border-white/5 gap-1 w-max flex-wrap">
-                             {[1, 2, 3, 7].map((d) => (
-                               <button
-                                 key={d}
-                                 onClick={() => setInactivityDays(d)}
-                                 className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                   inactivityDays === d
-                                     ? "bg-medical-cyan text-white shadow-lg shadow-medical-cyan/20"
-                                     : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
-                                 }`}
-                               >
-                                 {d} {d === 1 ? t("day") : t("days")}
-                               </button>
-                             ))}
+                           
+                           {/* Modern Creative Dropdown */}
+                           <div className="relative w-max">
+                              <button 
+                                onClick={() => setShowDaysMenu(!showDaysMenu)}
+                                className="flex items-center gap-4 bg-medical-black/50 hover:bg-medical-black/80 px-5 py-3 rounded-2xl border border-white/5 transition-all group"
+                              >
+                                <div className="flex flex-col items-start">
+                                  <span className="text-2xl font-black text-medical-cyan tabular-nums leading-none">
+                                    {inactivityDays}
+                                  </span>
+                                  <span className="text-[9px] font-black uppercase tracking-tighter text-gray-400 mt-1">
+                                    {inactivityDays === 1 ? t("day") : t("days")}
+                                  </span>
+                                </div>
+                                <div className={`p-1.5 rounded-lg bg-white/5 group-hover:bg-medical-cyan/20 transition-all ${showDaysMenu ? 'rotate-180' : ''}`}>
+                                   <ChevronRight className="w-4 h-4 text-gray-500 group-hover:text-medical-cyan rotate-90" />
+                                </div>
+                              </button>
+
+                              <AnimatePresence>
+                                {showDaysMenu && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    className="absolute left-0 mt-3 p-2 bg-medical-black/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl z-50 min-w-[160px] grid grid-cols-1 gap-1"
+                                  >
+                                    {[1, 2, 3, 7].map((d) => (
+                                      <button
+                                        key={d}
+                                        onClick={() => {
+                                          setInactivityDays(d);
+                                          setShowDaysMenu(false);
+                                        }}
+                                        className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+                                          inactivityDays === d 
+                                            ? "bg-medical-cyan/10 text-medical-cyan" 
+                                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-lg font-black">{d}</span>
+                                          <span className="text-[10px] font-bold uppercase tracking-widest">
+                                            {d === 1 ? t("day") : t("days")}
+                                          </span>
+                                        </div>
+                                        {inactivityDays === d && <CheckCircle className="w-4 h-4" />}
+                                      </button>
+                                    ))}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                            </div>
                         </div>
                       </div>

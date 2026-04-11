@@ -108,12 +108,28 @@ export default function DashboardPage() {
   const [unit, setUnit] = useState<"mg/dL" | "mmol/L" | "g/L">("mg/dL");
 
   useEffect(() => {
-    const savedUnit = localStorage.getItem("glucose_unit");
-    if (savedUnit === "mg/dL" || savedUnit === "mmol/L" || savedUnit === "g/L") {
-      setUnit(savedUnit);
-    }
-    setTargetMin(Number(localStorage.getItem("target_min") || 70));
-    setTargetMax(Number(localStorage.getItem("target_max") || 180));
+    const loadPrefs = () => {
+      const savedUnit = localStorage.getItem("glucose_unit");
+      if (savedUnit === "mg/dL" || savedUnit === "mmol/L" || savedUnit === "g/L") {
+        setUnit(savedUnit);
+      }
+      setTargetMin(Number(localStorage.getItem("target_min") || 70));
+      setTargetMax(Number(localStorage.getItem("target_max") || 180));
+    };
+
+    loadPrefs();
+
+    const handleUpdate = () => {
+      loadPrefs();
+    };
+
+    window.addEventListener("storage", handleUpdate);
+    window.addEventListener("settings-update", handleUpdate);
+    
+    return () => {
+      window.removeEventListener("storage", handleUpdate);
+      window.removeEventListener("settings-update", handleUpdate);
+    };
   }, []);
 
   const speakInsight = useCallback((text: string) => {
@@ -170,6 +186,9 @@ export default function DashboardPage() {
     setAiInsight("");
 
     try {
+      const preferredModelId = localStorage.getItem("preferredModelId");
+      const preferredModelProvider = localStorage.getItem("preferredModelProvider");
+
       const response = await fetch("/api/insights", {
         method: "POST",
         headers: {
@@ -180,7 +199,9 @@ export default function DashboardPage() {
         body: JSON.stringify({
           readings: freshReadings.slice(0, 15),
           timeRange,
-          lang
+          lang,
+          modelId: preferredModelId,
+          provider: preferredModelProvider
         }),
       });
       const data = await response.json();
@@ -245,10 +266,14 @@ export default function DashboardPage() {
 
         const transformedData = data
           .filter((r: { id: string }) => !deletedIds.includes(r.id))
-          .map((r: GlucoseReading) => ({
-            ...r,
-            value: editedMap[r.id] !== undefined ? editedMap[r.id] : r.value
-          }));
+          .map((r: GlucoseReading) => {
+            const edited = editedMap[r.id];
+            return {
+              ...r,
+              value: edited?.value !== undefined ? edited.value : r.value,
+              created_at: edited?.created_at !== undefined ? edited.created_at : r.created_at
+            };
+          });
 
         setReadings(transformedData);
         setLastSync(new Date());
@@ -286,15 +311,17 @@ export default function DashboardPage() {
   const displayTargetMin = convertGlucose(targetMin, unit);
   const displayTargetMax = convertGlucose(targetMax, unit);
 
-  const rawAvg = readings.length ? readings.reduce((a, b) => a + Number(b.value), 0) / readings.length : 0;
-  const eA1c = readings.length ? ((rawAvg + 46.7) / 28.7).toFixed(1) : "--";
-
-  const values = readings.map(r => convertGlucose(Number(r.value), unit));
+  const validReadings = readings.filter(r => r.value !== null && r.value !== "" && !isNaN(Number(r.value)));
+  
+  const rawAvg = validReadings.length ? validReadings.reduce((a, b) => a + Number(b.value), 0) / validReadings.length : 0;
+  const eA1c = validReadings.length ? ((rawAvg + 46.7) / 28.7).toFixed(1) : "--";
+  
+  const values = validReadings.map(r => convertGlucose(Number(r.value), unit));
   const avg = values.length 
-      ? (unit === "mg/dL" ? Math.round(values.reduce((a, b) => a + Number(b), 0) / values.length) : (values.reduce((a, b) => a + Number(b), 0) / values.length).toFixed(unit === "g/L" ? 2 : 1)) 
+      ? (unit === "mg/dL" ? Math.round(values.reduce((a, b) => a + Number(b), 0) / values.length).toString() : (values.reduce((a, b) => a + Number(b), 0) / values.length).toFixed(unit === "g/L" ? 2 : 1)) 
       : "--";
   const inRange = values.filter(v => Number(v) >= displayTargetMin && Number(v) <= displayTargetMax).length;
-  const inRangePct = values.length ? Math.round((inRange / values.length) * 100) : "--";
+  const inRangePct = values.length ? Math.round((inRange / values.length) * 100).toString() : "--";
   const hypoCount = values.filter(v => Number(v) < displayTargetMin).length;
 
   const [weeklyPattern, setWeeklyPattern] = useState("");

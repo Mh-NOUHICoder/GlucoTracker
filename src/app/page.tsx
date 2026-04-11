@@ -134,12 +134,6 @@ export default function Home() {
             {t("intelligent")}<br />
             <span className="relative inline-block px-4 text-transparent bg-clip-text bg-gradient-to-r from-medical-cyan via-white to-medical-cyan italic background-animate pb-4">
               {t("diabetes_care")}
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: "calc(100% - 2rem)" }}
-                transition={{ duration: 1.5, delay: 1 }}
-                className="absolute bottom-2 left-4 h-1 bg-gradient-to-r from-medical-cyan via-white to-transparent opacity-50"
-              />
             </span>
           </motion.h1>
 

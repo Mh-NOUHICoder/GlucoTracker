@@ -22,10 +22,12 @@ export default function Report({ userEmail, userName, readings, unit, targetMin,
   const { t, lang, dir } = useI18n();
   const isRTL = dir === "rtl";
 
-  const formatValue = (val: number) => {
-     if (unit === "mmol/L") return Number((val / 18.0182).toFixed(1));
-     if (unit === "g/L") return Number((val / 100).toFixed(2));
-     return val;
+  const formatValue = (val: any) => {
+     const num = Number(val);
+     if (isNaN(num)) return 0;
+     if (unit === "mmol/L") return Number((num / 18.0182).toFixed(1));
+     if (unit === "g/L") return Number((num / 100).toFixed(2));
+     return num;
   };
 
   const values = readings.map((r) => formatValue(Number(r.value)));
@@ -174,45 +176,44 @@ export default function Report({ userEmail, userName, readings, unit, targetMin,
               {(() => {
                 const recent = [...readings].reverse().slice(0, 30);
                 if (recent.length < 1) return null;
-                const minVal = formatValue(30);
-                const maxVal = formatValue(350);
-                const range = maxVal - minVal;
-                const targetMinY = 260 - ((displayTargetMin - minVal) / range) * 240;
-                const targetMaxY = 260 - ((displayTargetMax - minVal) / range) * 240;
-                return (
-                  <rect x="0" y={targetMaxY} width="1000" height={targetMinY - targetMaxY} fill="#10b981" fillOpacity="0.12" />
-                );
-              })()}
-              {/* Data Processing */}
-              {(() => {
-                const recent = [...readings].reverse().slice(0, 30);
-                if (recent.length < 2) return null;
-                const minVal = formatValue(30);
-                const maxVal = formatValue(350);
-                const range = maxVal - minVal;
                 
-                // Build points for the line
-                const points = recent.map((r, i) => {
-                  const val = formatValue(Number(r.value));
-                  const x = (i / (recent.length - 1)) * 1000;
+                const minVal = formatValue(30);
+                const maxVal = formatValue(350);
+                const range = Math.max(1, maxVal - minVal);
+                const safeRange = range <= 0 ? 1 : range;
+
+                // Target Zone
+                const targetMinY = 260 - ((displayTargetMin - minVal) / safeRange) * 240;
+                const targetMaxY = 260 - ((displayTargetMax - minVal) / safeRange) * 240;
+                const top = Math.min(targetMinY, targetMaxY);
+                const height = Math.abs(targetMinY - targetMaxY);
+
+                // Data Points
+                const points = recent.length >= 2 ? recent.map((r, i) => {
+                  const val = formatValue(r.value);
+                  const x = (i / Math.max(1, recent.length - 1)) * 1000;
                   const clamped = Math.max(minVal, Math.min(val, maxVal));
-                  const y = 260 - ((clamped - minVal) / range) * 240;
-                  return { x, y, val };
-                });
-                
-                const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-                
+                  const y = 260 - ((clamped - minVal) / safeRange) * 240;
+                  return { x: x || 0, y: isNaN(y) ? 260 : y, val };
+                }) : [];
+
+                const pathD = points.length >= 2 
+                  ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${Number(p.x).toFixed(1)} ${Number(p.y).toFixed(1)}`).join(' ')
+                  : "";
+
                 return (
                   <>
-                    {/* Filled Area */}
-                    <path d={pathD + ` L 1000 260 L 0 260 Z`} fill="url(#fill-gradient)" />
-                    {/* Line */}
-                    <path d={pathD} fill="none" stroke="url(#line-gradient)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    {/* Data Points */}
-                    {points.map((p, i) => {
-                      const color = p.val < displayTargetMin ? "#ef4444" : p.val > displayTargetMax ? "#f97316" : "#10b981";
-                      return <circle key={i} cx={p.x} cy={p.y} r="5" fill={color} stroke="#0f172a" strokeWidth="2" opacity="0.9" />;
-                    })}
+                    <rect x="0" y={isNaN(top) ? 60 : top} width="1000" height={isNaN(height) ? 120 : height} fill="#10b981" fillOpacity="0.12" />
+                    {points.length >= 2 && (
+                      <>
+                        <path d={pathD + ` L 1000 260 L 0 260 Z`} fill="url(#fill-gradient)" />
+                        <path d={pathD} fill="none" stroke="url(#line-gradient)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                        {points.map((p, i) => {
+                          const color = p.val < displayTargetMin ? "#ef4444" : p.val > displayTargetMax ? "#f97316" : "#10b981";
+                          return <circle key={i} cx={p.x} cy={p.y} r="5" fill={color} stroke="#0f172a" strokeWidth="2" opacity="0.9" />;
+                        })}
+                      </>
+                    )}
                   </>
                 );
               })()}

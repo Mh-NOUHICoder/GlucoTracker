@@ -41,10 +41,12 @@ export default function GlucoseTrendChart({ data, unit = "mg/dL", targetMin = 70
   const chartHeight = height - paddingY * 2;
 
   // Process data
-  const formatValue = useCallback((val: number) => {
-     if (unit === "mmol/L") return Number((val / 18.0182).toFixed(1));
-     if (unit === "g/L") return Number((val / 100).toFixed(2));
-     return val;
+  const formatValue = useCallback((val: any) => {
+     const num = Number(val);
+     if (isNaN(num)) return 0;
+     if (unit === "mmol/L") return Number((num / 18.0182).toFixed(1));
+     if (unit === "g/L") return Number((num / 100).toFixed(2));
+     return num;
   }, [unit]);
 
   const chartData = useMemo(() => {
@@ -64,13 +66,15 @@ export default function GlucoseTrendChart({ data, unit = "mg/dL", targetMin = 70
     const maxVal = Math.max(...values, baseMax) + padMax;
     const minVal = Math.max(0, Math.min(...values, baseMin) - padMin);
     const range = maxVal - minVal;
+    const safeRange = range <= 0 ? 1 : range;
 
     return sorted.map((d, i) => {
-      const val = formatValue(Number(d.value));
+      const val = formatValue(d.value);
       const rawX = (i / (sorted.length - 1 || 1)) * chartWidth;
       const x = isRTL ? paddingX + chartWidth - rawX : paddingX + rawX;
-      const y = paddingY + chartHeight - ((val - minVal) / (range || 1)) * chartHeight;
-      return { ...d, x, y, value: val };
+      const rawY = paddingY + chartHeight - ((val - minVal) / safeRange) * chartHeight;
+      const y = isNaN(rawY) ? paddingY + chartHeight : rawY;
+      return { ...d, x: x || 0, y: y || 0, value: val };
     });
   }, [data, chartWidth, chartHeight, paddingX, paddingY, unit, formatValue, isRTL]);
 
@@ -136,8 +140,10 @@ export default function GlucoseTrendChart({ data, unit = "mg/dL", targetMin = 70
             const maxVal = Math.max(...values, baseMax) + padMax;
             const minVal = Math.max(0, Math.min(...values, baseMin) - padMin);
             const range = maxVal - minVal;
-            const y = paddingY + chartHeight - ((v - minVal) / (range || 1)) * chartHeight;
-            if (y < paddingY || y > height - paddingY) return null;
+            const safeRange = range <= 0 ? 1 : range;
+            const rawY = paddingY + chartHeight - ((v - minVal) / safeRange) * chartHeight;
+            const y = isNaN(rawY) ? paddingY + chartHeight : rawY;
+            if (y < paddingY || y > height - paddingY || isNaN(y)) return null;
             const isBound = v === displayTargetMin || v === displayTargetMax;
             
             return (

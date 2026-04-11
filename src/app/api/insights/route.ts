@@ -7,7 +7,7 @@ export const revalidate = 0;
 
 export async function POST(req: Request) {
   try {
-    const { readings, lang } = await req.json();
+    const { readings, lang, modelId, provider } = await req.json();
 
     if (!readings || readings.length === 0) {
       return NextResponse.json({ insight: "" });
@@ -75,13 +75,20 @@ export async function POST(req: Request) {
     }
 
     const context = readings
-      .map((r: { value: number | string; created_at: string }) => `Value: ${r.value} mg/dL, Date: ${r.created_at}`)
+      .map((r: { value: number | string; created_at: string }) => {
+        const d = new Date(r.created_at);
+        const timeOfDay = d.getHours() >= 5 && d.getHours() < 11 ? "Morning (Fasting/Breakfast)" : 
+                          d.getHours() >= 11 && d.getHours() < 16 ? "Afternoon (Lunch)" :
+                          d.getHours() >= 16 && d.getHours() < 22 ? "Evening (Dinner)" : "Night (Fasting/Sleep)";
+        return `Value: ${r.value} mg/dL, Time: ${d.toLocaleString('en-US')} [${timeOfDay}]`;
+      })
       .join("\n");
 
     const prompt = `
       You are a specialized Diabetes Specialist and Metabolic Clinician. 
       Analyze these readings and provide ONE professional, clinical, yet caring insight.
       IMPORTANT: Explicitly mention the latest value (${readings[0].value} mg/dL) as a focal point.
+      CRITICAL INSTRUCTION: Pay close attention to the dates, times, and provided time-of-day context. Consider whether changes represent normal post-meal (after repat) spikes, fasting states, or concerning trends based on the time intervals between readings.
       If the reading is high, advise professional caution (e.g., checking ketones or hydration).
       If the reading is stable, offer clinical encouragement.
       
@@ -95,10 +102,16 @@ export async function POST(req: Request) {
       Begin directly with the observation.
     `;
 
-    const cascade = [
-      { provider: "gemini", id: "gemini-2.0-flash" },
+    const preferredModel = (modelId && provider) ? { id: modelId, provider } : null;
+
+    const baseCascade = [
+      { provider: "gemini", id: "gemini-2.5-flash" },
       { provider: "openai", id: "gpt-4o-mini" }
     ];
+
+    const cascade = preferredModel 
+      ? [preferredModel, ...baseCascade.filter(m => m.id !== preferredModel.id)]
+      : baseCascade;
 
     let insight = "";
 
@@ -116,7 +129,7 @@ export async function POST(req: Request) {
           const res = await openai.chat.completions.create({
             model: model.id,
             messages: [
-              { role: "system", content: "You are a metabolic health assistant. Mention the latest value exactly." },
+              { role: "system", content: "You are a metabolic health assistant. Mention the latest value exactly. Take the time of day and possible meal times into account when deducing patterns." },
               { role: "user", content: "Latest: " + readings[0].value + "\nContext:\n" + context }
             ],
             max_tokens: 100
