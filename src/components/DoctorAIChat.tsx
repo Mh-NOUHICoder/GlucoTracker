@@ -138,7 +138,7 @@ export default function DoctorAIChat() {
         {!isOpen && (
           <motion.div
             layoutId="ai-core-container"
-            className="fixed bottom-6 right-6 z-[60] flex items-center justify-center cursor-pointer"
+            className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-[45] sm:z-[60] flex items-center justify-center cursor-pointer"
             onHoverStart={() => setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
             onClick={() => setIsOpen(true)}
@@ -182,7 +182,7 @@ export default function DoctorAIChat() {
         {isOpen && (
           <motion.div
             layoutId="ai-core-container"
-            className="fixed bottom-6 right-6 sm:bottom-6 sm:right-6 w-[92vw] sm:w-[400px] h-[600px] max-h-[85vh] z-[60] rounded-2xl overflow-hidden flex flex-col backdrop-blur-xl bg-white/5 border border-white/10 shadow-[0_0_50px_rgba(0,229,255,0.15)] origin-bottom-right"
+            className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-[400px] h-[600px] max-h-[80vh] sm:max-h-[85vh] z-[60] rounded-2xl overflow-hidden flex flex-col backdrop-blur-xl bg-white/5 border border-white/10 shadow-[0_0_50px_rgba(0,229,255,0.15)] origin-bottom-right"
           >
             {/* Header */}
             <div className="px-5 py-4 border-b border-white/10 bg-black/40 flex items-center justify-between">
