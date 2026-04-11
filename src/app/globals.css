@@ -23,6 +23,18 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Custom Datetime Picker Styles */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(0.8) opacity(0.6);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+    filter: invert(1) brightness(1) opacity(1);
+    transform: scale(1.1);
+}
+
 /* Hide scrollbar globally but keep functionality */
 *::-webkit-scrollbar {
   display: none;

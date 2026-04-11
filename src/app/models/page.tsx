@@ -23,6 +23,8 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
+import ConfirmationModal from "@/components/ConfirmationModal";
+
 
 export default function ProfileSettingsPage() {
   const { t } = useI18n();
@@ -36,6 +38,8 @@ export default function ProfileSettingsPage() {
   const [targetMin, setTargetMin] = useState(70);
   const [targetMax, setTargetMax] = useState(180);
   const [activeTab, setActiveTab] = useState("profile");
+  const [showConfirm, setShowConfirm] = useState(false);
+
 
   // Profile Update States
   const [firstName, setFirstName] = useState("");
@@ -154,22 +158,22 @@ export default function ProfileSettingsPage() {
   };
 
   const clearAllLocalCaches = () => {
-    if (window.confirm("This will clear all manual edits, hidden records, and AI insight caches. Continue?")) {
-      // Clear specific keys
-      localStorage.removeItem("deleted_readings");
-      localStorage.removeItem("edited_readings");
-      
-      // Clear all items starting with insight_
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith("insight_")) {
-          localStorage.removeItem(key);
-        }
-      });
-      
-      toast.success("Cleared local caches. Reloading...");
-      setTimeout(() => window.location.reload(), 300);
-    }
+    setShowConfirm(false);
+    // Clear specific keys
+    localStorage.removeItem("deleted_readings");
+    localStorage.removeItem("edited_readings");
+    
+    // Clear all items starting with insight_
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith("insight_")) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    toast.success("Cleared local caches. Reloading...");
+    setTimeout(() => window.location.reload(), 300);
   };
+
 
   return (
     <div className="max-w-4xl mx-auto pt-8 pb-20 space-y-8 px-4">
@@ -620,7 +624,7 @@ export default function ProfileSettingsPage() {
   
                   <div className="space-y-3">
                      <button 
-                       onClick={clearAllLocalCaches}
+                       onClick={() => setShowConfirm(true)}
                        className="w-full group flex items-center justify-between p-4 rounded-xl bg-red-500/5 border border-red-500/10 hover:border-red-500/30 transition-all font-bold text-sm text-red-400 hover:text-red-300 shadow-sm"
                      >
                        <span className="flex items-center gap-3"><RotateCcw className="w-4 h-4" /> {t("clear_local_data")}</span>
@@ -632,6 +636,16 @@ export default function ProfileSettingsPage() {
           </motion.div>
         </AnimatePresence>
       )}
+
+      <ConfirmationModal
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={clearAllLocalCaches}
+        title={t("clear_data_title") || "Clear All Data?"}
+        message={t("clear_data_message") || "This will clear all manual edits, hidden records, and AI insight caches. Continue?"}
+        variant="danger"
+      />
     </div>
   );
 }
+
