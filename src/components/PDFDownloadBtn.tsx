@@ -45,7 +45,7 @@ export default function PDFDownloadBtn({
           locale={lang}
         />}
         fileName={`GlucoTrack_Report_${new Date().toISOString().split('T')[0]}.pdf`}
-        className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-medical-dark to-medical-cyan/20 border border-medical-cyan/30 text-white font-black shadow-[0_10px_30px_rgba(6,182,212,0.15)] hover:shadow-[0_15px_40px_rgba(6,182,212,0.4)] hover:bg-medical-cyan/30 transition-all no-underline"
+        className="btn-secondary px-8 !py-3 !w-auto !rounded-2xl !bg-medical-dark/40 !border-medical-cyan/30 hover:!bg-medical-cyan/10 transition-all no-underline shadow-lg"
       >
         {({ loading, error }: { loading: boolean; error: Error | null; url: string | null }) => {
           if (loading) {

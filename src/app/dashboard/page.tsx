@@ -342,7 +342,7 @@ export default function DashboardPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-6 md:space-y-8 pb-10"
+      className="container mx-auto px-4 py-6 md:py-10 space-y-6 md:space-y-8 pb-10"
     >
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-gradient-to-br from-medical-dark to-medical-black p-6 md:p-8 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden group">
         <div className="absolute inset-0 bg-gradient-to-r from-medical-cyan/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
@@ -373,13 +373,14 @@ export default function DashboardPage() {
           )}
           
           <Link href="/upload" className="flex-1 lg:flex-none">
-            <motion.div
+            <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-medical-blue to-medical-cyan text-white font-black flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(6,182,212,0.3)] hover:shadow-[0_15px_40px_rgba(6,182,212,0.5)] transition-all"
+              className="px-8 py-3 bg-[#00e5ff] text-black font-black rounded-2xl shadow-[0_0_20px_rgba(0,229,255,0.3)] flex items-center justify-center gap-2 uppercase tracking-widest text-sm transition-all hover:bg-[#70f3ff]"
             >
-              <Plus className="w-6 h-6 stroke-[3px]" /> <span className="text-sm">{t("add_reading")}</span>
-            </motion.div>
+              <Plus className="w-6 h-6 stroke-[3px]" /> 
+              <span>{t("add_reading")}</span>
+            </motion.button>
           </Link>
         </div>
       </div>
@@ -576,7 +577,11 @@ export default function DashboardPage() {
             <h2 className="text-3xl font-black text-white mb-4 tracking-tighter">{t("no_data")}</h2>
             <p className="text-gray-500 max-w-sm mb-10 text-center leading-relaxed font-medium">{t("no_data_desc")}</p>
             <Link href="/upload">
-              <motion.button whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(6,182,212,0.3)" }} whileTap={{ scale: 0.95 }} className="px-10 py-4 rounded-full border-2 border-medical-cyan text-medical-cyan hover:bg-medical-cyan/10 transition-all font-black tracking-widest uppercase text-xs flex items-center gap-3">
+              <motion.button 
+                whileHover={{ scale: 1.05 }} 
+                whileTap={{ scale: 0.95 }} 
+                className="btn-secondary px-10 !py-4 !w-auto !rounded-full !border-medical-cyan !text-medical-cyan hover:!bg-medical-cyan/10"
+              >
                 <Plus className="w-5 h-5 stroke-[3px]" /> {t("start_tracking")}
               </motion.button>
             </Link>

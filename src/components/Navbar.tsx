@@ -176,7 +176,7 @@ export default function Navbar() {
                   <motion.button 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="btn-primary !px-6 !py-2 !rounded-xl !w-auto !h-auto text-sm"
+                    className="btn-primary !px-2.5 !py-1.5 sm:!px-5 sm:!py-2 !rounded-xl !w-auto !h-auto !text-[9px] sm:!text-sm !tracking-tight sm:!tracking-widest !gap-1"
                   >
                     {t("sign_in_save")}
                   </motion.button>
@@ -206,7 +206,7 @@ export default function Navbar() {
                     isActive ? "text-medical-primary" : "text-gray-400 hover:text-gray-200"
                   }`}
                 >
-                  <Icon className={`w-6 h-6 ${isActive ? "drop-shadow-[0_0_8px_rgba(255,158,94,0.8)]" : ""}`} />
+                  <Icon className={`w-6 h-6 ${isActive ? "drop-shadow-[0_0_8px_rgba(0,229,255,0.8)]" : ""}`} />
                   {isActive && (
                     <motion.div
                       layoutId="mobile-nav-indicator"

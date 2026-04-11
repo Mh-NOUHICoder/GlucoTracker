@@ -219,7 +219,7 @@ export default function HistoryPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-8 pb-10"
+      className="container mx-auto px-4 py-6 md:py-10 space-y-8 pb-10"
     >
       <div className="flex justify-between items-center bg-gradient-to-r from-medical-dark to-medical-black p-8 rounded-3xl border border-medical-cyan/10 shadow-2xl">
         <div className="flex items-center gap-6">

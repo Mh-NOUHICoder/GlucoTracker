@@ -305,7 +305,7 @@ export default function ProfileSettingsPage() {
                          <button 
                            onClick={handleUpdateProfile}
                            disabled={isUpdatingProfile}
-                           className="flex items-center gap-2 px-8 py-3 bg-medical-cyan hover:bg-medical-accent rounded-xl text-white font-black text-sm transition-all shadow-lg shadow-medical-cyan/20 disabled:opacity-50 active:scale-95"
+                           className="btn-primary !w-auto !px-8 !py-3"
                          >
                             {isUpdatingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                             {t("save_changes")}
@@ -597,7 +597,7 @@ export default function ProfileSettingsPage() {
                 <div className="pt-6 border-t border-white/5">
                   <button 
                     onClick={handleSaveSettings}
-                    className="px-10 py-5 bg-gradient-to-r from-medical-blue to-medical-cyan rounded-2xl text-white font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-medical-cyan/20 active:scale-95"
+                    className="btn-premium !w-auto !px-10 !py-5"
                   >
                      {t("save_changes")}
                   </button>

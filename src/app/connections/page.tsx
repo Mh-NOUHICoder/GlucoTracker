@@ -185,7 +185,7 @@ interface BluetoothNavigator extends Navigator {
 // ─── Main Page Component ──────────────────────────────────────────────────────
 
 export default function ConnectionsPage() {
-  const { t, lang } = useI18n();
+  const { t, lang, dir } = useI18n();
   const { user } = useUser();
   const router = useRouter();
 
@@ -628,16 +628,16 @@ export default function ConnectionsPage() {
 
   // ── Step 0: Device Selection ──────────────────────────────────────────────────
   const Step0 = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {savedDevices.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] px-1">Past Connections</h2>
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
             {savedDevices.map(device => (
               <motion.div
                 key={`saved-${device.id}`}
                 whileHover={{ scale: 1.01 }}
-                className="flex items-center gap-4 p-3 rounded-2xl border border-[#ff9e5e]/20 bg-[#ff9e5e]/5 backdrop-blur-xl relative group"
+                className="flex items-center gap-4 p-3 rounded-2xl border border-medical-cyan/20 bg-medical-cyan/5 backdrop-blur-xl relative group"
               >
                 <div onClick={() => { setSelectedDevice(device); setStep(4); }}
                   className="w-12 h-12 rounded-xl overflow-hidden bg-gray-800 flex-shrink-0 relative cursor-pointer">
@@ -665,35 +665,40 @@ export default function ConnectionsPage() {
       )}
 
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+        <Search className={`absolute ${dir === "rtl" ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5`} />
         <input
           type="text"
+          dir={dir}
           placeholder={t("search_devices")}
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          className="w-full bg-[#111827]/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-medical-cyan transition-colors text-white placeholder:text-gray-500"
+          className={`w-full bg-[#111827]/50 border border-white/10 rounded-2xl py-3 ${dir === "rtl" ? "pr-12 pl-4" : "pl-12 pr-4"} outline-none focus:border-medical-cyan transition-colors text-white placeholder:text-gray-500`}
         />
       </div>
 
-      <div className="grid gap-3 max-h-[55vh] overflow-y-auto no-scrollbar pb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 pb-12 px-0.5">
         {filteredDevices.map(device => (
           <motion.div
             key={device.id}
             whileHover={{ scale: 1.01, backgroundColor: "rgba(255,255,255,0.04)" }}
             whileTap={{ scale: 0.98 }}
             onClick={() => { setSelectedDevice(device); nextStep(); }}
-            className="flex items-center gap-4 p-4 rounded-2xl border border-white/5 bg-white/[0.02] cursor-pointer transition-all"
+            className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 py-3 px-4 rounded-2xl border border-white/5 bg-white/[0.02] cursor-pointer transition-all hover:bg-medical-cyan/5 hover:border-medical-cyan/20"
           >
             <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-800 flex-shrink-0 relative">
               <Image src={device.image} alt={device.name} fill className="object-cover opacity-80" />
             </div>
-            <div className="flex-1">
+            <div className={`flex-1 ${dir === "rtl" ? "text-right" : "text-left"} min-w-0`}>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-white text-sm">{device.name}</h3>
+                <h3 className="font-semibold text-white text-xs sm:text-sm truncate w-full">{device.name}</h3>
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">{device.brand}</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">{device.brand}</p>
             </div>
-            <ChevronRight className="text-gray-600 w-5 h-5 flex-shrink-0" />
+            {dir === "rtl" ? (
+              <ArrowLeft className="text-gray-600 w-5 h-5 flex-shrink-0" />
+            ) : (
+              <ChevronRight className="text-gray-600 w-5 h-5 flex-shrink-0" />
+            )}
           </motion.div>
         ))}
       </div>
@@ -705,7 +710,7 @@ export default function ConnectionsPage() {
     const specs = selectedDevice ? DEVICE_SPECS[selectedDevice.id] : null;
 
     return (
-      <div className="flex flex-col items-center text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col items-center text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
         {/* Device image */}
         <div className="relative w-44 h-44">
@@ -866,11 +871,15 @@ export default function ConnectionsPage() {
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               className="w-full space-y-4"
             >
-              <div className="w-full p-4 rounded-2xl border border-amber-500/20 bg-amber-500/8 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                <div className="text-left">
-                  <p className="text-sm font-bold text-amber-300">Bluetooth detection not available</p>
-                  <p className="text-[11px] text-amber-500/70 mt-1">Your browser doesn&apos;t support the Web Bluetooth API. Please ensure Bluetooth is enabled on your device before continuing.</p>
+              <div className="w-full p-5 rounded-3xl border border-medical-cyan/25 bg-medical-cyan/8">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-2xl bg-medical-cyan/15 flex items-center justify-center flex-shrink-0">
+                    <Bluetooth className="w-5 h-5 text-medical-cyan" />
+                  </div>
+                  <div className={`text-left ${dir === "rtl" ? "text-right" : "text-left"}`}>
+                    <p className="text-sm font-bold text-medical-cyan/90">Bluetooth detection not available</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Check your connection settings</p>
+                  </div>
                 </div>
               </div>
               <button
@@ -1116,7 +1125,7 @@ export default function ConnectionsPage() {
 
   // ── Step 4: Secure Pairing ─────────────────────────────────────────────────────
   const Step4 = () => (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <AnimatePresence mode="wait">
         {pairingMethod === "choice" && (
           <motion.div key="choice" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-4">
@@ -1223,7 +1232,7 @@ export default function ConnectionsPage() {
     const activeDevice = selectedDiscoveredDevice || selectedDevice;
 
     return (
-      <div className="flex flex-col items-center space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col items-center space-y-4 animate-in fade-in duration-500">
 
         {/* ── Connection Badge ─────────────────────────────────────────────── */}
         <div className="relative w-full flex flex-col items-center pt-2">
@@ -1385,27 +1394,29 @@ export default function ConnectionsPage() {
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-6 relative overflow-x-hidden md:p-8">
+    <div className="bg-[#050505] text-white relative overflow-x-hidden">
       {/* Background Decor */}
       <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-medical-cyan/5 blur-[120px] rounded-full -mr-64 -mt-64 pointer-events-none" />
       <div className="fixed bottom-0 left-0 w-[400px] h-[400px] bg-medical-primary/5 blur-[100px] rounded-full -ml-48 -mb-48 pointer-events-none" />
 
-      <div className="max-w-xl mx-auto space-y-8 relative z-10">
+      <div className="w-full px-4 md:px-10 lg:px-16 space-y-4 relative z-10">
         {/* Header with Progress */}
-        <div className="space-y-6">
+        <div className="space-y-4 pt-0">
           <div className="flex items-center justify-between">
             <button
               onClick={prevStep}
               className={`p-2 -ml-2 rounded-xl hover:bg-white/5 transition-all text-gray-500 hover:text-white ${step === 0 && "opacity-0 cursor-default"}`}
               disabled={step === 0}
             >
-              <ArrowLeft className="w-6 h-6" />
+              {dir === "rtl" ? <ChevronRight className="w-6 h-6" /> : <ArrowLeft className="w-6 h-6" />}
             </button>
             <div className="flex flex-col items-center">
-              <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-1">Step {step + 1} of {totalSteps}</span>
+              <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-1.5">
+                {t("step_x_of_y").replace("{x}", (step + 1).toString()).replace("{y}", totalSteps.toString())}
+              </span>
               <div className="flex gap-1.5">
                 {[...Array(totalSteps)].map((_, i) => (
-                  <div key={i} className={`h-1 rounded-full transition-all duration-500 ${i === step ? "w-6 bg-medical-cyan" : i < step ? "w-2 bg-emerald-500/50" : "w-1.5 bg-white/10"}`} />
+                  <div key={i} className={`h-1 rounded-full transition-all duration-500 ${i === step ? "w-6 bg-medical-cyan shadow-[0_0_8px_#00e5ff]" : i < step ? "w-2 bg-emerald-500/50" : "w-1.5 bg-white/10"}`} />
                 ))}
               </div>
             </div>
@@ -1541,9 +1552,9 @@ function MemorySection({
           {/* Table Header */}
           <div className="px-5 py-4 border-b border-white/5 space-y-3">
             {discoveryMode === "demo" && (
-              <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-2">
-                <Info className="w-3.5 h-3.5 text-amber-500" />
-                <p className="text-[10px] text-amber-500/80 font-bold uppercase tracking-tight">Review Simulation Data · Accuracy Check Required</p>
+              <div className="px-3 py-2 rounded-xl bg-medical-cyan/10 border border-medical-cyan/20 flex items-center gap-2">
+                <Info className="w-3.5 h-3.5 text-medical-cyan" />
+                <p className="text-[10px] text-medical-cyan/80 font-bold uppercase tracking-tight">Review Simulation Data · Accuracy Check Required</p>
               </div>
             )}
             <div className="flex items-center justify-between gap-3">

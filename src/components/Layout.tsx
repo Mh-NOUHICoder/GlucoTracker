@@ -10,7 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 rounded-full bg-medical-cyan/10 blur-3xl pointer-events-none" />
       
       <Navbar />
-      <main className="flex-1 container mx-auto px-4 py-8 md:py-12 relative z-10 w-full mb-20 md:mb-0">
+      <main className="flex-1 relative z-10 w-full pt-0 md:pt-20">
         {children}
       </main>
     </div>

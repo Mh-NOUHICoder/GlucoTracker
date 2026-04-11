@@ -295,9 +295,9 @@ export default function UploadButton() {
               onClick={() => fileInputRef.current?.click()}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full py-4 rounded-xl border border-medical-blue/30 bg-medical-dark/50 flex items-center justify-center gap-3 text-gray-300 hover:text-white hover:bg-medical-blue/10 transition-colors mb-3"
+              className="btn-secondary !bg-medical-dark/50 !border-medical-blue/30 hover:!bg-medical-blue/10 mb-3"
             >
-              <ImageIcon className="w-5 h-5 text-medical-blue-light" />
+              <ImageIcon className="w-5 h-5 text-medical-blue" />
               <span className="font-medium">{t("upload_gallery")}</span>
             </motion.button>
 
@@ -305,7 +305,7 @@ export default function UploadButton() {
               onClick={() => setIsManualEntry(true)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full py-4 rounded-xl border border-medical-cyan/20 bg-medical-cyan/5 flex items-center justify-center gap-3 text-medical-cyan hover:text-white hover:bg-medical-cyan/10 transition-colors"
+              className="btn-secondary !bg-medical-cyan/5 !border-medical-cyan/20 !text-medical-cyan hover:!bg-medical-cyan/10"
             >
               <Edit className="w-5 h-5" />
               <span className="font-medium">{t("enter_manually")}</span>
@@ -333,7 +333,7 @@ export default function UploadButton() {
               
               <div className="relative mb-8">
                 <div className="absolute inset-0 bg-medical-cyan/20 blur-2xl rounded-full" />
-                <div className="relative w-20 h-20 rounded-[2rem] bg-gradient-to-br from-medical-cyan to-medical-blue p-[1px]">
+                <div className="relative w-20 h-20 rounded-[2rem] bg-medical-cyan p-[1px]">
                   <div className="w-full h-full rounded-[2rem] bg-medical-dark flex items-center justify-center">
                     <Droplets className="w-10 h-10 text-medical-cyan" />
                   </div>
@@ -373,12 +373,12 @@ export default function UploadButton() {
                       {manualUnit === u && (
                         <motion.div
                           layoutId="activeUnit"
-                          className="absolute inset-0 bg-gradient-to-r from-medical-blue to-medical-cyan shadow-[0_0_15px_rgba(6,182,212,0.4)] rounded-xl"
+                          className="absolute inset-0 bg-medical-cyan shadow-[0_0_15px_rgba(0,229,255,0.4)] rounded-xl"
                           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                         />
                       )}
                       <span className={`relative z-20 text-[10px] font-black uppercase tracking-[0.2em] transition-colors duration-300 ${
-                        manualUnit === u ? "text-white" : "text-gray-500 hover:text-gray-300"
+                        manualUnit === u ? "text-black" : "text-gray-500 hover:text-gray-300"
                       }`}>
                         {u}
                       </span>
@@ -392,7 +392,7 @@ export default function UploadButton() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleManualSubmit}
-                  className="w-full py-5 bg-gradient-to-r from-medical-blue to-medical-cyan text-white font-black uppercase tracking-widest text-sm rounded-2xl shadow-[0_10px_30px_rgba(6,182,212,0.3)] hover:shadow-medical-cyan/40 transition-all"
+                  className="btn-premium"
                 >
                   {t("save_reading")}
                 </motion.button>
@@ -518,7 +518,7 @@ export default function UploadButton() {
                 disabled={isAnalyzing}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-medical-blue to-medical-cyan text-white font-bold shadow-lg flex items-center justify-center gap-2 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-premium !text-lg !py-4"
               >
                 {isAnalyzing ? (
                   <>

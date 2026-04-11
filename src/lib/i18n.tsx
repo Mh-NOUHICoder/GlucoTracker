@@ -195,6 +195,7 @@ export const dict: Translations = {
     scan_failed: "Scan timed out. Please enter PIN manually.",
     past_connections: "Past Connections",
     connected: "CONNECTED",
+    step_x_of_y: "Step {x} of {y}",
   },
   fr: {
     dashboard: "Tableau de bord",
@@ -380,6 +381,7 @@ export const dict: Translations = {
     scan_failed: "Scan timed out. Please enter PIN manually.",
     past_connections: "Connexions passées",
     connected: "CONNECTÉ",
+    step_x_of_y: "Étape {x} sur {y}",
   },
   ar: {
     dashboard: "لوحة القيادة",
@@ -530,7 +532,7 @@ export const dict: Translations = {
     hydration_body: "البقاء رطبًا ضروري لمعالجة الجلوكوز. تذكر أن تشرب كوبًا من الماء!",
     ai_powered_tracking: "تتبع مدعوم بالذكاء الاصطناعي",
     intelligent: "رعاية ذكية ",
-    diabetes_care: "لمرضى السكري",
+    diabetes_care: "للمرضى السكري",
     landing_subtitle: "راقب مستويات الجلوكوز لديك بسهولة باستخدام التعرف المتقدم على الصور بالذكاء الاصطناعي. رؤى دقيقة فقط، بدون تعقيدات.",
     open_dashboard: "فتح لوحة القيادة",
     scan_reading: "مسح قراءة",
@@ -565,6 +567,7 @@ export const dict: Translations = {
     scan_failed: "انتهى وقت المسح. يرجى إدخال رمز PIN يدويًا.",
     past_connections: "الاتصالات السابقة",
     connected: "متصل",
+    step_x_of_y: "الخطوة {x} من {y}",
   }
 };
 

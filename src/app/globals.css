@@ -5,7 +5,9 @@
   --color-medical-dark: #121417;
   --color-medical-primary: #00e5ff;
   --color-medical-primary-light: #70f3ff;
-  --color-medical-cyan: #00e5ff; 
+  --color-medical-cyan: #00e5ff;
+  --color-medical-blue: #0ea5e9;
+  --color-medical-blue-light: #7dd3fc;
 }
 
 :root {
@@ -53,11 +55,41 @@ label:has(input) {
   }
 
   .btn-primary {
-    @apply w-full py-4 bg-[var(--color-medical-primary)] text-black font-black rounded-full shadow-[0_8px_25px_rgba(0,229,255,0.3)] hover:opacity-95 active:scale-[0.98] transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2;
+    @apply w-full py-4 rounded-2xl transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2;
+    background-color: #00e5ff;
+    color: #000000;
+    font-weight: 900;
+    box-shadow: 0 10px 30px -10px rgba(0, 229, 255, 0.3);
+  }
+
+  .btn-primary:hover {
+    @apply -translate-y-0.5 shadow-medical-cyan/30;
+    opacity: 0.95;
   }
 
   .btn-secondary {
-    @apply w-full py-4 bg-white/[0.03] border border-white/10 text-white font-bold rounded-full hover:bg-white/10 transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2;
+    @apply w-full py-4 border rounded-2xl transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .btn-premium {
+    @apply w-full py-4 rounded-2xl transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2;
+    background-color: #00e5ff;
+    color: #000000;
+    font-weight: 900;
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+  }
+
+  .btn-premium:hover {
+    @apply -translate-y-0.5;
+    box-shadow: 0 0 30px rgba(0, 229, 255, 0.4);
   }
 
   .status-dot {
