@@ -555,17 +555,17 @@ export default function HistoryPage() {
                             <div className="hidden md:flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button 
                                 onClick={(e) => { e.stopPropagation(); startEditing(reading.id, val, reading.created_at); }}
-                                className="p-3 rounded-xl bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                                className="p-3 rounded-xl bg-medical-cyan/5 border border-medical-cyan/10 text-medical-cyan/50 hover:text-medical-cyan hover:bg-medical-cyan/10 hover:border-medical-cyan/30 transition-all group/edit"
                                 title={t("edit")}
                               >
-                                <Pencil className="w-5 h-5" />
+                                <Pencil className="w-5 h-5 group-hover/edit:scale-110 transition-transform" />
                               </button>
                               <button 
                                 onClick={(e) => { e.stopPropagation(); handleDelete(reading.id); }}
-                                className="p-3 rounded-xl bg-red-500/5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                                className="p-3 rounded-xl bg-red-500/5 border border-red-500/10 text-red-500/40 hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/30 transition-all group/delete"
                                 title={t("delete")}
                               >
-                                <Trash2 className="w-5 h-5" />
+                                <Trash2 className="w-5 h-5 group-hover/delete:scale-110 transition-transform" />
                               </button>
                             </div>
                           </div>
@@ -574,15 +574,15 @@ export default function HistoryPage() {
                           <div className="flex md:hidden items-center gap-3 w-full pt-4 border-t border-white/5">
                             <button 
                               onClick={(e) => { e.stopPropagation(); startEditing(reading.id, val, reading.created_at); }}
-                              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 text-gray-300 font-bold text-xs"
+                              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-medical-cyan/5 border border-medical-cyan/10 text-medical-cyan/70 font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
                             >
-                              <Pencil className="w-4 h-4" /> {t("edit")}
+                              <Pencil className="w-3.5 h-3.5" /> {t("edit")}
                             </button>
                             <button 
                               onClick={(e) => { e.stopPropagation(); handleDelete(reading.id); }}
-                              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 text-red-400 font-bold text-xs"
+                              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500/5 border border-red-500/10 text-red-500/60 font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
                             >
-                              <Trash2 className="w-4 h-4" /> {t("delete")}
+                              <Trash2 className="w-3.5 h-3.5" /> {t("delete")}
                             </button>
                           </div>
                         </div>
@@ -602,37 +602,53 @@ export default function HistoryPage() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-6"
+            className="fixed bottom-32 md:bottom-10 left-1/2 -translate-x-1/2 z-[70] w-[92%] sm:w-full sm:max-w-lg"
           >
-            <div className="bg-medical-dark/95 backdrop-blur-2xl border border-medical-primary/20 p-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 ml-2">
-                <div className="w-10 h-10 rounded-2xl bg-medical-primary/10 flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-medical-primary" />
+            <div className="bg-medical-dark/95 backdrop-blur-3xl border border-white/10 p-3 sm:p-5 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7),0_0_20px_rgba(0,229,255,0.05)] flex items-center justify-between gap-2 sm:gap-6 overflow-hidden relative">
+              {/* Internal Accent Line */}
+              <div className="absolute top-0 left-10 right-10 h-[1px] bg-gradient-to-r from-transparent via-medical-cyan/20 to-transparent" />
+
+              <div className="flex items-center gap-2 sm:gap-5 ml-1 sm:ml-2">
+                <div className="relative shrink-0">
+                   <div className="absolute inset-0 bg-medical-cyan/10 blur-sm rounded-full animate-pulse" />
+                   <div className="p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-medical-black border border-medical-cyan/20 text-medical-cyan relative z-10">
+                     <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
+                   </div>
                 </div>
-                <div>
-                  <p className="text-white font-bold text-sm">{selectedIds.size} {t("selected")}</p>
-                  <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{t("readings_ready")}</p>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] sm:text-sm font-black text-white tracking-tight uppercase italic truncate leading-none">
+                    {selectedIds.size} {t("selected")}
+                  </span>
+                  <span className="hidden xs:block text-[8px] sm:text-[9px] font-black tracking-[0.2em] text-medical-cyan/30 uppercase mt-1 leading-none truncate">
+                    {t("readings_ready")}
+                  </span>
                 </div>
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
                 <button 
                   onClick={() => setSelectedIds(new Set())}
-                  className="px-4 py-2.5 rounded-xl border border-white/5 text-gray-400 font-bold text-xs hover:text-white transition-all"
+                  className="px-3 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl border border-white/5 text-gray-500 font-black text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.25em] transition-all hover:bg-white/5 hover:text-white active:scale-95"
                 >
                   {t("cancel")}
                 </button>
                 <button 
                   onClick={handleBulkDelete}
                   disabled={isDeleting}
-                  className="px-6 py-2.5 rounded-xl bg-red-500 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all flex items-center gap-2"
+                  className="px-4 sm:px-8 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-red-600 to-red-500 text-white font-black text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.25em] shadow-[0_10px_20px_rgba(239,68,68,0.3)] hover:shadow-[0_15px_30px_rgba(239,68,68,0.5)] active:scale-95 transition-all flex items-center gap-1.5 sm:gap-2.5 disabled:opacity-50 group/del"
                 >
-                  {isDeleting ? <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  {t("delete_from_db")}
+                  {isDeleting ? (
+                    <span className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover/del:rotate-12 transition-transform" strokeWidth={3} />
+                  )}
+                  <span className="whitespace-nowrap">{t("delete")}</span>
                 </button>
               </div>
             </div>
           </motion.div>
+
+
         )}
       </AnimatePresence>
 
