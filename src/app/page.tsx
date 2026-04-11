@@ -16,19 +16,22 @@ function BackgroundDynamics() {
   };
 
   const particles = useMemo(() => {
-    return Array.from({ length: 30 }).map((_, i) => {
-      const rand = seededRandom(i + 1);
-      // Tiered sizes: 20% large (bokeh effect), 80% small (stars)
-      const size = rand > 0.8 
-        ? seededRandom(i + 10) * 5 + 4  // 4px to 9px
-        : seededRandom(i + 10) * 2 + 1; // 1px to 3px
+    return Array.from({ length: 150 }).map((_, i) => {
+      const rand = seededRandom(i);
+      // Mostly tiny stars, with a few brighter ones
+      const isBright = rand > 0.92;
+      const size = isBright 
+        ? seededRandom(i + 10) * 2 + 1.5 
+        : seededRandom(i + 10) * 1 + 0.5;
 
       return {
         id: i,
         size,
         x: seededRandom(i + 20) * 100,
         y: seededRandom(i + 30) * 100,
-        duration: seededRandom(i + 40) * 15 + 10,
+        duration: seededRandom(i + 40) * 4 + 3,
+        delay: seededRandom(i + 50) * 5,
+        opacity: seededRandom(i + 60) * 0.7 + 0.3,
       };
     });
   }, []);
@@ -57,25 +60,26 @@ function BackgroundDynamics() {
       
       {/* Moving Grid Overlay */}
       <div 
-        className="absolute inset-0 opacity-[0.1]"
+        className="absolute inset-0 opacity-[0.05]"
         style={{
           backgroundImage: `linear-gradient(#ffffff05 1px, transparent 1px), linear-gradient(90deg, #ffffff05 1px, transparent 1px)`,
           backgroundSize: '40px 40px',
         }}
       />
 
-      {/* Floating Particles */}
+      {/* Twinkling Night Sky Particles */}
       {particles.map((p) => (
         <motion.div
           key={p.id}
+          initial={{ opacity: 0 }}
           animate={{
-            y: ["0%", "100%", "0%"],
-            x: ["0%", "5%", "0%"],
-            opacity: [0, 0.4, 0],
+            opacity: [p.opacity, p.opacity * 0.2, p.opacity],
+            scale: p.size > 2 ? [1, 1.2, 1] : 1,
           }}
           transition={{
             duration: p.duration,
             repeat: Infinity,
+            delay: p.delay,
             ease: "easeInOut",
           }}
           className="absolute bg-white rounded-full"
@@ -84,7 +88,8 @@ function BackgroundDynamics() {
             height: `${p.size}px`,
             left: `${p.x}%`,
             top: `${p.y}%`,
-            filter: p.size > 4 ? 'blur(1px)' : 'none', // Subtle bokeh for large particles
+            backgroundColor: p.id % 10 === 0 ? '#06b6d4' : 'white', // Occasional cyan star
+            boxShadow: p.size > 2 ? `0 0 10px rgba(255, 255, 255, 0.8)` : 'none',
           }}
         />
       ))}
