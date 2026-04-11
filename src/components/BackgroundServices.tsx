@@ -32,8 +32,9 @@ export default function BackgroundServices() {
         const todayStr = now.toDateString();
 
         // 1. Glucose Reminders
-        const isGlucoEnabled = localStorage.getItem("notify_gluco") !== "false";
+        const isGlucoEnabled = localStorage.getItem("notify_glucose") === "true";
         if (isGlucoEnabled) {
+           const inactivityDays = Number(localStorage.getItem("inactivity_days") || 2);
            const cachedStr = await localforage.getItem(`readings_${user.id}`);
            if (cachedStr) {
                const readings = cachedStr as { created_at: string }[];
@@ -46,10 +47,10 @@ export default function BackgroundServices() {
                const timeSinceLastLog = now.getTime() - lastLoggedAt;
                const hoursSinceLastLog = timeSinceLastLog / (1000 * 60 * 60);
 
-               // Activates if last recorded entry was more than 48 hours ago
-               if (hoursSinceLastLog >= 48) {
-                 const morningTimeStr = localStorage.getItem("notify_morning_time") || "08:00";
-                 const noonTimeStr = localStorage.getItem("notify_noon_time") || "12:30";
+               // Activates if last recorded entry was more than X days ago
+               if (hoursSinceLastLog >= inactivityDays * 24) {
+                 const morningTimeStr = localStorage.getItem("morning_time") || "08:00";
+                 const noonTimeStr = localStorage.getItem("noon_time") || "12:00";
                  
                  const [mHour, mMin] = morningTimeStr.split(":").map(Number);
                  const [nHour, nMin] = noonTimeStr.split(":").map(Number);
@@ -58,13 +59,13 @@ export default function BackgroundServices() {
                  const noonKey = `reminder_noon_${user.id}_${todayStr}`;
 
                  // Morning Alert
-                 if (currentHour === mHour && currentMinute >= mMin && !localStorage.getItem(morningKey)) {
+                 if (currentHour === mHour && currentMinute === mMin && !localStorage.getItem(morningKey)) {
                     sendNotification(t("gluco_reminder_title"), t("morning_gluco_body"));
                     localStorage.setItem(morningKey, "true");
                  }
 
                  // Noon Alert
-                 if (currentHour === nHour && currentMinute >= nMin && !localStorage.getItem(noonKey)) {
+                 if (currentHour === nHour && currentMinute === nMin && !localStorage.getItem(noonKey)) {
                     sendNotification(t("gluco_reminder_title"), t("noon_gluco_body"));
                     localStorage.setItem(noonKey, "true");
                  }
@@ -76,10 +77,15 @@ export default function BackgroundServices() {
         const isWaterEnabled = localStorage.getItem("notify_water") === "true";
         if (isWaterEnabled) {
            const waterInterval = Number(localStorage.getItem("water_interval") || 2);
+           const waterUnit = localStorage.getItem("water_unit") || "hours";
            const lastWaterStr = localStorage.getItem(`last_water_${user.id}`);
            const lastWater = lastWaterStr ? Number(lastWaterStr) : 0;
            
-           if (now.getTime() - lastWater >= waterInterval * 60 * 60 * 1000) {
+           const intervalMs = waterUnit === "minutes" 
+            ? waterInterval * 60 * 1000 
+            : waterInterval * 60 * 60 * 1000;
+
+           if (now.getTime() - lastWater >= intervalMs) {
               sendNotification(t("hydration_title"), t("hydration_body"));
               localStorage.setItem(`last_water_${user.id}`, String(now.getTime()));
            }
@@ -115,23 +121,28 @@ export default function BackgroundServices() {
       playNotificationSound();
       
       if ("Notification" in window && Notification.permission === "granted") {
+         const options: any = {
+            body,
+            icon: "/glucotracker.png",
+            badge: "/glucotracker.png",
+            data: { url: "/upload" },
+            silent: false,
+            vibrate: [500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450, 110, 200, 110, 170, 40, 500],
+            requireInteraction: true, // Keep it on screen until user acts
+            tag: title.toLowerCase().replace(/\s/g, '_'), // Unique tag to avoid flooding but allow re-notifying
+            renotify: true, // Vibrate/sound again even if a notification with same tag is already there
+         };
+
          if (swRegistration.current) {
-            swRegistration.current.showNotification(title, {
-               body,
-               icon: "/glucotracker.png", // Fallback if no specific badge
-               badge: "/glucotracker.png",
-               data: { url: "/upload" },
-               silent: false,
-               vibrate: [200, 100, 200]
-            } as NotificationOptions);
+            swRegistration.current.showNotification(title, options);
          } else {
-            // Fallback to normal Notification API if SW isn't ready
-            new Notification(title, { body, icon: "/glucotracker.png", silent: false });
+            // Fallback to normal Notification API
+            new Notification(title, options);
          }
       }
     };
 
-    const interval = setInterval(checkReminders, 1000 * 60 * 5); // Check every 5 min
+    const interval = setInterval(checkReminders, 1000 * 60 * 1); // Check every 1 min
     checkReminders(); // check immediately
     
     return () => clearInterval(interval);

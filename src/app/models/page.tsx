@@ -18,7 +18,9 @@ import {
   Loader2,
   Bell,
   Clock,
-  Droplet
+  Droplet,
+  Plus,
+  Minus
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useUser } from "@clerk/nextjs";
@@ -51,6 +53,7 @@ export default function ProfileSettingsPage() {
   const [noonTime, setNoonTime] = useState("12:00");
   const [notifyWater, setNotifyWater] = useState(false);
   const [waterInterval, setWaterInterval] = useState(1);
+  const [waterUnit, setWaterUnit] = useState("hours");
   const [inactivityDays, setInactivityDays] = useState(2);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,6 +91,7 @@ export default function ProfileSettingsPage() {
     setNoonTime(localStorage.getItem("noon_time") || "12:00");
     setNotifyWater(localStorage.getItem("notify_water") === "true");
     setWaterInterval(Number(localStorage.getItem("water_interval") || 1));
+    setWaterUnit(localStorage.getItem("water_unit") || "hours");
     setInactivityDays(Number(localStorage.getItem("inactivity_days") || 2));
   }, []);
 
@@ -103,6 +107,7 @@ export default function ProfileSettingsPage() {
     localStorage.setItem("noon_time", noonTime);
     localStorage.setItem("notify_water", notifyWater.toString());
     localStorage.setItem("water_interval", waterInterval.toString());
+    localStorage.setItem("water_unit", waterUnit);
     localStorage.setItem("inactivity_days", inactivityDays.toString());
 
     toast.success(t("profile_updated"));
@@ -477,15 +482,23 @@ export default function ProfileSettingsPage() {
                        if ("Notification" in window) {
                          if (Notification.permission === "granted") {
                            navigator.serviceWorker.ready.then((registration) => {
-                             registration.showNotification(t("gluco_reminder_title") || "Test Notification", {
-                               body: "This is a test notification. 🔔",
-                               icon: "/glucotracker.png",
-                               badge: "/glucotracker.png",
-                               silent: false,
-                               vibrate: [200, 100, 200]
-                             } as NotificationOptions);
-                           }).catch(() => {
-                             new Notification(t("gluco_reminder_title") || "Test Notification", { body: "This is a test notification. 🔔", icon: "/glucotracker.png", silent: false });
+                               registration.showNotification(t("gluco_reminder_title") || "Test Notification", {
+                                 body: "This is a high-visibility test notification. 🔔",
+                                 icon: "/glucotracker.png",
+                                 badge: "/glucotracker.png",
+                                 silent: false,
+                                 vibrate: [500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450, 110, 200, 110, 170, 40, 500],
+                                 requireInteraction: true,
+                                 tag: "test_notification",
+                                 renotify: true
+                               } as any);
+                             }).catch(() => {
+                               new Notification(t("gluco_reminder_title") || "Test Notification", { 
+                                 body: "This is a high-visibility test notification. 🔔", 
+                                 icon: "/glucotracker.png", 
+                                 silent: false,
+                                 requireInteraction: true 
+                               } as any);
                            });
                          } else if (Notification.permission !== "denied") {
                            Notification.requestPermission().then((permission) => {
@@ -505,27 +518,37 @@ export default function ProfileSettingsPage() {
 
                 <div className="space-y-8">
                   {/* Glucose Alerts */}
-                  <div className="p-6 rounded-3xl bg-white/5 border border-white/5 space-y-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <div className="text-lg font-bold text-white mb-1">{t("glucose_check_alert")}</div>
-                        <div className="flex items-center gap-3 bg-medical-black/50 px-3 py-1.5 rounded-xl border border-white/5">
-                           <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{t("remind_every")}</span>
-                           <select 
-                              value={inactivityDays} 
-                              onChange={(e) => setInactivityDays(Number(e.target.value))}
-                              className="bg-transparent text-medical-cyan font-black text-xs outline-none cursor-pointer"
-                           >
-                              <option value={1}>1 {t("day")}</option>
-                              <option value={2}>2 {t("days") || "days"}</option>
-                              <option value={3}>3 {t("days") || "days"}</option>
-                              <option value={7}>7 {t("days") || "days"}</option>
-                           </select>
+                  <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/5 space-y-8 shadow-xl">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-6 flex-1">
+                        <div className="text-xl font-bold text-white flex items-center gap-3">
+                          <Bell className="w-5 h-5 text-medical-cyan" /> {t("glucose_check_alert")}
+                        </div>
+                        
+                        <div className="space-y-3">
+                           <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest opacity-60 ml-px flex items-center gap-2">
+                             <RotateCcw className="w-3 h-3" /> {t("remind_every")}
+                           </span>
+                           <div className="flex bg-medical-black/50 p-1.5 rounded-2xl border border-white/5 gap-1 w-max flex-wrap">
+                             {[1, 2, 3, 7].map((d) => (
+                               <button
+                                 key={d}
+                                 onClick={() => setInactivityDays(d)}
+                                 className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                   inactivityDays === d
+                                     ? "bg-medical-cyan text-white shadow-lg shadow-medical-cyan/20"
+                                     : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+                                 }`}
+                               >
+                                 {d} {d === 1 ? t("day") : t("days")}
+                               </button>
+                             ))}
+                           </div>
                         </div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer group">
+                      <label className="relative inline-flex items-center cursor-pointer group pt-1">
                         <input type="checkbox" checked={notifyGlucose} onChange={(e) => setNotifyGlucose(e.target.checked)} className="sr-only peer" />
-                        <div className="w-14 h-7 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-gray-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-medical-cyan/30 peer-checked:after:bg-medical-cyan shadow-inner"></div>
+                        <div className="w-16 h-8 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-gray-400 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-medical-cyan/30 peer-checked:after:bg-medical-cyan shadow-inner"></div>
                       </label>
                     </div>
 
@@ -533,28 +556,28 @@ export default function ProfileSettingsPage() {
                       <motion.div 
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
-                        className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/5"
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 border-t border-white/5"
                       >
-                        <div className="space-y-2">
-                           <label className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <div className="space-y-3 p-4 rounded-2xl bg-medical-black/20 border border-white/5">
+                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                              <Clock className="w-4 h-4 text-medical-cyan" /> {t("morning_alert")}
                            </label>
                            <input 
                              type="time" 
                              value={morningTime} 
                              onChange={(e) => setMorningTime(e.target.value)}
-                             className="w-full bg-medical-black border border-white/5 rounded-2xl px-6 py-4 text-white font-bold focus:border-medical-cyan outline-none transition-all"
+                             className="w-full bg-medical-black/60 border border-white/10 rounded-xl px-4 py-3 text-lg text-white font-black focus:border-medical-cyan outline-none transition-all"
                            />
                         </div>
-                        <div className="space-y-2">
-                           <label className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <div className="space-y-3 p-4 rounded-2xl bg-medical-black/20 border border-white/5">
+                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                              <Clock className="w-4 h-4 text-medical-cyan" /> {t("noon_alert")}
                            </label>
                            <input 
                              type="time" 
                              value={noonTime} 
                              onChange={(e) => setNoonTime(e.target.value)}
-                             className="w-full bg-medical-black border border-white/5 rounded-2xl px-6 py-4 text-white font-bold focus:border-medical-cyan outline-none transition-all"
+                             className="w-full bg-medical-black/60 border border-white/10 rounded-xl px-4 py-3 text-lg text-white font-black focus:border-medical-cyan outline-none transition-all"
                            />
                         </div>
                       </motion.div>
@@ -562,17 +585,17 @@ export default function ProfileSettingsPage() {
                   </div>
 
                   {/* Hydration Alerts */}
-                  <div className="p-6 rounded-3xl bg-white/5 border border-white/5 space-y-6">
+                  <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/5 space-y-8 shadow-xl">
                     <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <div className="text-lg font-bold text-white flex items-center gap-3">
+                      <div className="space-y-2">
+                        <div className="text-xl font-bold text-white flex items-center gap-3">
                           <Droplet className="w-6 h-6 text-blue-400" /> {t("hydration_reminder")}
                         </div>
-                        <div className="text-sm text-gray-500">{t("hydration_desc")}</div>
+                        <div className="text-sm text-gray-500 font-medium">{t("hydration_desc")}</div>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer group">
                         <input type="checkbox" checked={notifyWater} onChange={(e) => setNotifyWater(e.target.checked)} className="sr-only peer" />
-                        <div className="w-14 h-7 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-gray-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500/30 peer-checked:after:bg-blue-400 shadow-inner"></div>
+                        <div className="w-16 h-8 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-gray-400 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-500/30 peer-checked:after:bg-blue-400 shadow-inner"></div>
                       </label>
                     </div>
 
@@ -580,19 +603,57 @@ export default function ProfileSettingsPage() {
                       <motion.div 
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
-                        className="flex items-center gap-4 bg-medical-black/80 p-6 rounded-2xl border border-white/5"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-medical-black/40 p-6 rounded-[2rem] border border-white/5 shadow-inner"
                       >
-                        <span className="text-sm font-black text-gray-400 uppercase tracking-widest">{t("remind_every")}</span>
-                        <select 
-                           value={waterInterval} 
-                           onChange={(e) => setWaterInterval(Number(e.target.value))}
-                           className="bg-medical-dark border border-white/10 rounded-xl px-4 py-2 text-white font-black text-sm outline-none focus:border-blue-400 transition-all"
-                        >
-                           <option value={1}>1 {t("hour")}</option>
-                           <option value={2}>2 {t("hours") || "hours"}</option>
-                           <option value={3}>3 {t("hours") || "hours"}</option>
-                           <option value={4}>4 {t("hours") || "hours"}</option>
-                        </select>
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{t("remind_every")}</span>
+                          <div className="text-white font-bold flex items-center gap-2">
+                             <span className="text-2xl text-blue-400">{waterInterval}</span>
+                             <span className="text-gray-400 capitalize text-sm">
+                               {waterUnit === "hours" 
+                                 ? (waterInterval === 1 ? t("hour") : t("hours")) 
+                                 : t("minutes")}
+                             </span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap items-center gap-3">
+                          {/* Stepper Control */}
+                          <div className="flex items-center bg-medical-black rounded-xl border border-white/10 p-1">
+                            <button 
+                              onClick={() => setWaterInterval(Math.max(1, waterInterval - 1))}
+                              className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-all"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <div className="w-10 text-center text-white font-black text-sm select-none">
+                              {waterInterval}
+                            </div>
+                            <button 
+                              onClick={() => setWaterInterval(waterInterval + 1)}
+                              className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-all"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+                      
+                          {/* Unit Segmented Control */}
+                          <div className="flex bg-medical-black rounded-xl border border-white/10 p-1 gap-1">
+                            {["minutes", "hours"].map((unit) => (
+                              <button
+                                key={unit}
+                                onClick={() => setWaterUnit(unit)}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                                  waterUnit === unit 
+                                    ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20" 
+                                    : "text-gray-500 hover:text-gray-300"
+                                }`}
+                              >
+                                {t(unit)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </motion.div>
                     )}
                   </div>
@@ -648,4 +709,3 @@ export default function ProfileSettingsPage() {
     </div>
   );
 }
-
