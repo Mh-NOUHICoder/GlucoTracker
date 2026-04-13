@@ -6,8 +6,9 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function POST(req: Request) {
+  console.log("Chat API: POST Request received");
   try {
-    const { message, history = [], lang = 'en', userName, context = [] } = await req.json();
+    const { message, history = [], lang = 'en', userName, context = [], modelId, provider } = await req.json();
 
     const geminiKey = process.env.GEMINI_API_KEY;
     const openAiKey = process.env.OPEN_AI_KEY || process.env.OPENAI_API_KEY;
@@ -15,7 +16,12 @@ export async function POST(req: Request) {
     let systemPrompt = `You are "Doctor AI", a Caring Specialist Doctor and Metabolic Clinician assisting ${userName || "a patient"}. 
 You specialize in diabetes management and glucose tracking.
 Tone: Extremely empathetic, professional, reassuring, yet medically authoritative.
-Respond directly and conversationally in the same language the user is speaking (${lang}). Do NOT use markdown formatting like **bold text**, asterisks, lists, or headers. Provide plain text responses structured naturally with paragraphs, suitable for a text message bubble. Keep responses reasonably concise like a chat message. Make sure the user feels deeply cared for.
+Important constraints:
+- Be extremely precise and to the point.
+- Keep your answers short. Strictly avoid long-winded answers unless explicitly asked.
+- Respond directly and conversationally in the same language the user is speaking (${lang}). Do NOT use markdown formatting like **bold text**, asterisks, lists, or headers. Provide plain text responses structured naturally with paragraphs, suitable for a text message bubble. Make sure the user feels deeply cared for.
+
+Current Date and Time: ${new Date().toLocaleString('en-US')}. Use this current time to provide better and clear context when analyzing the user's data values.
 `;
 
     if (context && context.length > 0) {
@@ -26,10 +32,26 @@ Respond directly and conversationally in the same language the user is speaking 
       systemPrompt += `\nUse this data naturally if it's relevant to their question or to offer specific insights. If they ask about their current status or recent readings, reference these.`;
     }
 
-    if (geminiKey) {
-      const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      
+    const useGemini = provider === "gemini" ? geminiKey : (provider === "openai" ? false : geminiKey);
+    const useOpenAI = provider === "openai" ? openAiKey : (provider === "gemini" ? false : openAiKey);
+
+    const executeOpenAI = async (modelName: string) => {
+      const openai = new OpenAI({ apiKey: openAiKey });
+      const messages = [
+        { role: "system", content: systemPrompt },
+        ...history.map((h: any) => ({ role: h.role === "user" ? "user" : "assistant", content: h.content })),
+        { role: "user", content: message }
+      ];
+      const result = await openai.chat.completions.create({
+        model: modelName,
+        messages: messages as any,
+        max_tokens: 400
+      });
+      return result.choices[0]?.message?.content?.trim() || "I am here to help.";
+    };
+
+    const executeGemini = async (modelName: string) => {
+      const genAI = new GoogleGenerativeAI(geminiKey || "");
       const chatHistory = history.map((h: any) => ({
         role: h.role === "user" ? "user" : "model",
         parts: [{ text: h.content }]
@@ -39,35 +61,40 @@ Respond directly and conversationally in the same language the user is speaking 
         chatHistory.unshift({ role: "user", parts: [{ text: "Hello Doctor." }] });
       }
 
-      // In gemini we pass system instruct using systemInstruction property for models that support it, 
-      // but to be compatible out of the box with standard flash chat initialization, we can just inject it as the first message or use systemInstruction.
-      // We will use systemInstruction if the model supports it, but since 'getGenerativeModel' takes systemInstruction, we'll configure it directly.
       const chatModel = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash",
+        model: modelName,
         systemInstruction: systemPrompt
       });
 
-      const chat = chatModel.startChat({
-        history: chatHistory,
-      });
-
+      const chat = chatModel.startChat({ history: chatHistory });
       const result = await chat.sendMessage(message);
-      return NextResponse.json({ reply: result.response.text().trim() });
-    } else if (openAiKey) {
-      const openai = new OpenAI({ apiKey: openAiKey });
-      const messages = [
-        { role: "system", content: systemPrompt },
-        ...history.map((h: any) => ({ role: h.role === "user" ? "user" : "assistant", content: h.content })),
-        { role: "user", content: message }
-      ];
+      return result.response.text().trim();
+    };
 
-      const result = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: messages as any,
-        max_tokens: 400
-      });
-
-      return NextResponse.json({ reply: result.choices[0]?.message?.content?.trim() || "I am here to help." });
+    if (useGemini && geminiKey) {
+      try {
+        const reply = await executeGemini(modelId || "gemini-2.5-flash");
+        return NextResponse.json({ reply });
+      } catch (err: any) {
+        console.warn(`[Doctor AI] Gemini Failed (${err.message}). Attempting OpenAI Fallback...`);
+        if (openAiKey) {
+           const reply = await executeOpenAI("gpt-4o-mini");
+           return NextResponse.json({ reply });
+        }
+        throw err;
+      }
+    } else if (useOpenAI && openAiKey) {
+      try {
+        const reply = await executeOpenAI(modelId || "gpt-4o-mini");
+        return NextResponse.json({ reply });
+      } catch (err: any) {
+        console.warn(`[Doctor AI] OpenAI Failed (${err.message}). Attempting Gemini Fallback...`);
+        if (geminiKey) {
+           const reply = await executeGemini("gemini-2.5-flash");
+           return NextResponse.json({ reply });
+        }
+        throw err;
+      }
     } else {
        const fallback = lang === "ar" ? "أنا طبيبك الذكي للمتابعة. (يتطلب إعداد المفتاح للرد الحي)" : "I am your caring Doctor AI. (API key needed for live response)";
        return NextResponse.json({ reply: fallback });

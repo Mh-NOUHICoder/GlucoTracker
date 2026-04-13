@@ -94,16 +94,24 @@ export default function DoctorAIChat() {
     try {
       let readingsContext: any[] = [];
       if (user?.id) {
-         const { data: readings } = await supabase
-            .from("readings")
+         const { data: readings, error: sbError } = await supabase
+            .from("glucose_readings")
             .select("value, created_at")
             .eq("user_id", user.id)
             .order("created_at", { ascending: false })
-            .limit(5);
+            .limit(10);
+         
+         if (sbError) console.error("Supabase Context Error:", sbError);
          readingsContext = readings || [];
       }
 
-      const res = await fetch("/api/chat", {
+      console.log("Doctor AI: Sending chat request...");
+      const apiUrl = typeof window !== "undefined" ? `${window.location.origin}/api/chat` : "/api/chat";
+      
+      const preferredModelId = typeof window !== "undefined" ? localStorage.getItem("preferredModelId") : null;
+      const preferredModelProvider = typeof window !== "undefined" ? localStorage.getItem("preferredModelProvider") : null;
+      
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -111,18 +119,28 @@ export default function DoctorAIChat() {
           history: messages,
           lang,
           userName: user?.firstName || "",
-          context: readingsContext
+          context: readingsContext,
+          modelId: preferredModelId,
+          provider: preferredModelProvider
         }),
+      }).catch(err => {
+        console.error("Fetch Execution Error:", err);
+        throw err;
       });
 
-      if (!res.ok) throw new Error("Failed to fetch response");
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`API Error (${res.status}):`, errorText);
+        throw new Error("Failed to fetch response");
+      }
+      
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "ai", content: data.reply }]);
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      console.error("Doctor AI Send Error:", error);
       const fallback = lang === "ar" 
-        ? "عذراً، أواجه مشكلة في الاتصال بنظام الذكاء الاصطناعي. يرجى المحاولة لاحقاً." 
-        : "I apologize, I'm having trouble connecting to my neural core right now. Please try again.";
+        ? "عذراً، أواجه مشكلة في الاتصال بنظام الذكاء الاصطناعي. يرجى التأكد من اتصالك بالإنترنت وإيقاف أي ملحقات للمتصفح قد تحجب الطلبات." 
+        : "I apologize, I'm having trouble connecting to my neural core. Please check your internet connection and ensure no browser extensions are blocking the request.";
       setMessages((prev) => [...prev, { role: "ai", content: fallback }]);
     } finally {
       setIsLoading(false);

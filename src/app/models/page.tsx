@@ -36,6 +36,7 @@ export default function ProfileSettingsPage() {
   
   // Settings States
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [selectedModelName, setSelectedModelName] = useState<string | null>(null);
   const [unit, setUnit] = useState("mg/dL");
   const [targetMin, setTargetMin] = useState(70);
   const [targetMax, setTargetMax] = useState(180);
@@ -98,6 +99,7 @@ export default function ProfileSettingsPage() {
 
     // Load saved preferences
     setSelectedModelId(localStorage.getItem("preferredModelId"));
+    setSelectedModelName(localStorage.getItem("preferredModelName"));
     setUnit(localStorage.getItem("glucose_unit") || "mg/dL");
     setTargetMin(Number(localStorage.getItem("target_min") || 70));
     setTargetMax(Number(localStorage.getItem("target_max") || 180));
@@ -166,7 +168,11 @@ export default function ProfileSettingsPage() {
     setSelectedModelId(id);
     localStorage.setItem("preferredModelId", id);
     const model = models.find(m => m.id === id);
-    if (model) localStorage.setItem("preferredModelProvider", model.provider);
+    if (model) {
+      localStorage.setItem("preferredModelProvider", model.provider);
+      localStorage.setItem("preferredModelName", model.name);
+      setSelectedModelName(model.name);
+    }
     window.dispatchEvent(new Event("settings-update"));
   };
 
@@ -486,13 +492,13 @@ export default function ProfileSettingsPage() {
                           </div>
                           <div className="flex flex-col items-start">
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-1">{t("ai_engine")}</span>
-                            <div className="flex items-center gap-3">
+                             <div className="flex items-center gap-3">
                                <span className="text-xl font-black text-white">
-                                 {models.find(m => m.id === selectedModelId)?.name || t("select_model") || "Select Model"}
+                                 {models.find(m => m.id === selectedModelId)?.name || selectedModelName || t("select_model") || "Select Model"}
                                </span>
                                {selectedModelId && (
                                  <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                                   {models.find(m => m.id === selectedModelId)?.provider}
+                                   {models.find(m => m.id === selectedModelId)?.provider || localStorage.getItem("preferredModelProvider") || "api"}
                                  </span>
                                )}
                             </div>
