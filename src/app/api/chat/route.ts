@@ -7,8 +7,11 @@ export const revalidate = 0;
 
 export async function POST(req: Request) {
   console.log("Chat API: POST Request received");
+  let lang = 'en';
   try {
-    const { message, history = [], lang = 'en', userName, context = [], modelId, provider } = await req.json();
+    const body = await req.json();
+    lang = body.lang || 'en';
+    const { message, history = [], userName, context = [], modelId, provider } = body;
 
     const geminiKey = process.env.GEMINI_API_KEY;
     const openAiKey = process.env.OPEN_AI_KEY || process.env.OPENAI_API_KEY;

@@ -111,7 +111,8 @@ export default function DoctorAIChat() {
     
     const userMsg = input.trim();
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
+    const newUserMessage: Message = { role: "user", content: userMsg };
+    setMessages((prev) => [...prev, newUserMessage]);
     setIsLoading(true);
 
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -161,9 +162,9 @@ export default function DoctorAIChat() {
       if (!res.ok) throw new Error("API_COMM_FAIL");
       
       const data = await res.json();
-      const aiReply = data.reply;
+      const aiReply = String(data.reply || "");
       setMessages((prev) => {
-        const newMessages = [...prev, { role: "ai", content: aiReply }];
+        const newMessages: Message[] = [...prev, { role: "ai", content: aiReply }];
         // Trigger autoplay if enabled
         if (autoPlay) {
           setTimeout(() => toggleSpeech(aiReply, newMessages.length - 1), 500);
@@ -172,7 +173,8 @@ export default function DoctorAIChat() {
       });
     } catch (error) {
       console.error("Doctor AI Connectivity Error:", error);
-      setMessages((prev) => [...prev, { role: "ai", content: t("ai_fallback") }]);
+      const fallbackMsg: Message = { role: "ai", content: t("ai_fallback") };
+      setMessages((prev) => [...prev, fallbackMsg]);
     } finally {
       setIsLoading(false);
       setIsFetchingContext(false);
