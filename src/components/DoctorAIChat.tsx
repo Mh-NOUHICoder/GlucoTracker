@@ -35,7 +35,21 @@ export default function DoctorAIChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingContext, setIsFetchingContext] = useState(false);
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
+  const [autoPlay, setAutoPlay] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("ai_auto_play");
+      if (saved === "true") setAutoPlay(true);
+    }
+  }, []);
+
+  const toggleAutoPlay = () => {
+    const newVal = !autoPlay;
+    setAutoPlay(newVal);
+    localStorage.setItem("ai_auto_play", String(newVal));
+  };
 
   // Auto-scroll logic with smoother handling
   const scrollToBottom = () => {
@@ -76,6 +90,12 @@ export default function DoctorAIChat() {
     const utterance = new SpeechSynthesisUtterance(text);
     const locales: Record<string, string> = { ar: "ar-SA", fr: "fr-FR", en: "en-US" };
     utterance.lang = locales[lang] || "en-US";
+    
+    // Try to find a higher quality voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const targetedVoice = voices.find(v => v.lang.startsWith(locales[lang] || "en-US") && v.name.includes("Google"));
+    if (targetedVoice) utterance.voice = targetedVoice;
+
     utterance.rate = 0.95;
     utterance.pitch = 1.0;
     
@@ -141,7 +161,15 @@ export default function DoctorAIChat() {
       if (!res.ok) throw new Error("API_COMM_FAIL");
       
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "ai", content: data.reply }]);
+      const aiReply = data.reply;
+      setMessages((prev) => {
+        const newMessages = [...prev, { role: "ai", content: aiReply }];
+        // Trigger autoplay if enabled
+        if (autoPlay) {
+          setTimeout(() => toggleSpeech(aiReply, newMessages.length - 1), 500);
+        }
+        return newMessages;
+      });
     } catch (error) {
       console.error("Doctor AI Connectivity Error:", error);
       setMessages((prev) => [...prev, { role: "ai", content: t("ai_fallback") }]);
@@ -246,16 +274,31 @@ export default function DoctorAIChat() {
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  window.speechSynthesis?.cancel();
-                  setPlayingIdx(null);
-                }}
-                className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-gray-500 hover:text-white hover:bg-white/10 transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={toggleAutoPlay}
+                  className={`p-2.5 rounded-xl border transition-all flex items-center gap-2 ${
+                    autoPlay 
+                      ? "bg-medical-cyan/20 border-medical-cyan text-medical-cyan shadow-[0_0_15px_rgba(0,229,255,0.2)]" 
+                      : "bg-white/5 border-white/5 text-gray-500 hover:text-white hover:bg-white/10"
+                  }`}
+                  title="Auto Play Voice"
+                >
+                  <Volume2 className={`w-5 h-5 ${autoPlay ? "animate-pulse" : ""}`} />
+                </motion.button>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    window.speechSynthesis?.cancel();
+                    setPlayingIdx(null);
+                  }}
+                  className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-gray-500 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </header>
 
             {/* Chat Body */}

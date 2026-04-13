@@ -76,10 +76,16 @@ Current Date and Time: ${new Date().toLocaleString('en-US')}. Use this current t
         const reply = await executeGemini(modelId || "gemini-2.0-flash");
         return NextResponse.json({ reply });
       } catch (err: any) {
-        console.warn(`[Doctor AI] Gemini Failed (${err.message}). Attempting OpenAI Fallback...`);
+        console.error(`[Doctor AI] Gemini Error:`, err);
         if (openAiKey) {
-           const reply = await executeOpenAI("gpt-4o-mini");
-           return NextResponse.json({ reply });
+           console.log(`[Doctor AI] Attempting OpenAI Fallback...`);
+           try {
+             const reply = await executeOpenAI("gpt-4o-mini");
+             return NextResponse.json({ reply });
+           } catch (openAiErr: any) {
+             console.error(`[Doctor AI] OpenAI Fallback failed:`, openAiErr);
+             throw new Error("Both AI providers failed.");
+           }
         }
         throw err;
       }
@@ -88,20 +94,36 @@ Current Date and Time: ${new Date().toLocaleString('en-US')}. Use this current t
         const reply = await executeOpenAI(modelId || "gpt-4o-mini");
         return NextResponse.json({ reply });
       } catch (err: any) {
-        console.warn(`[Doctor AI] OpenAI Failed (${err.message}). Attempting Gemini Fallback...`);
+        console.error(`[Doctor AI] OpenAI Error:`, err);
         if (geminiKey) {
-           const reply = await executeGemini("gemini-2.0-flash");
-           return NextResponse.json({ reply });
+           console.log(`[Doctor AI] Attempting Gemini Fallback...`);
+           try {
+             const reply = await executeGemini("gemini-2.0-flash");
+             return NextResponse.json({ reply });
+           } catch (geminiErr: any) {
+             console.error(`[Doctor AI] Gemini Fallback failed:`, geminiErr);
+             throw new Error("Both AI providers failed.");
+           }
         }
         throw err;
       }
     } else {
-       const fallback = lang === "ar" ? "أنا طبيبك الذكي للمتابعة. (يتطلب إعداد المفتاح للرد الحي)" : "I am your caring Doctor AI. (API key needed for live response)";
+       const fallback = lang === "ar" 
+         ? "أنا طبيبك الذكي للمتابعة. يرجى التأكد من إعداد مفاتيح التشغيل (API Keys) في إعدادات النظام للرد المباشر." 
+         : "I am your caring Doctor AI. Please ensure API keys are configured in the system environment for live responses.";
        return NextResponse.json({ reply: fallback });
     }
 
   } catch (err: any) {
-    console.error("Doctor AI Chat Error:", err);
-    return NextResponse.json({ reply: "I apologize, but I am having trouble connecting to my clinical database right now. Please try again in a moment." }, { status: 200 });
+    console.error("Doctor AI Chat Critical Error:", err);
+    // Return a more descriptive error if possible, or a cleaner fallback
+    const errorMessage = lang === "ar" 
+      ? "أعتذر منك، أواجه صعوبة في معالجة طلبك حالياً. قد يكون هناك ضغط على النظام أو مشكلة في الاتصال بمزود الخدمة. يرجى المحاولة مرة أخرى بعد قليل."
+      : "I apologize, but I am having trouble processing your request right now. There might be a temporary service outage or connection issue. Please try again in a moment.";
+    
+    return NextResponse.json({ 
+      reply: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    }, { status: 200 });
   }
 }
