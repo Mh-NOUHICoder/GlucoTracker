@@ -73,7 +73,7 @@ Current Date and Time: ${new Date().toLocaleString('en-US')}. Use this current t
 
     if (useGemini && geminiKey) {
       try {
-        const reply = await executeGemini(modelId || "gemini-2.5-flash");
+        const reply = await executeGemini(modelId || "gemini-2.0-flash");
         return NextResponse.json({ reply });
       } catch (err: any) {
         console.warn(`[Doctor AI] Gemini Failed (${err.message}). Attempting OpenAI Fallback...`);
@@ -90,7 +90,7 @@ Current Date and Time: ${new Date().toLocaleString('en-US')}. Use this current t
       } catch (err: any) {
         console.warn(`[Doctor AI] OpenAI Failed (${err.message}). Attempting Gemini Fallback...`);
         if (geminiKey) {
-           const reply = await executeGemini("gemini-2.5-flash");
+           const reply = await executeGemini("gemini-2.0-flash");
            return NextResponse.json({ reply });
         }
         throw err;

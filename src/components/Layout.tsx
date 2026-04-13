@@ -11,7 +11,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 rounded-full bg-medical-cyan/10 blur-3xl pointer-events-none" />
       
       <Navbar />
-      <main className="flex-1 relative z-10 w-full pt-0">
+      <main className="flex-1 relative z-10 w-full pt-28 lg:pt-32">
         {children}
       </main>
       <DoctorAIChat />
