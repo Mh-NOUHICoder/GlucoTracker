@@ -34,9 +34,32 @@ export default function DoctorAIChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingContext, setIsFetchingContext] = useState(false);
+  const [dbStatus, setDbStatus] = useState<"connected" | "error" | "syncing">("connected");
+  const [showSettings, setShowSettings] = useState(false);
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
   const [autoPlay, setAutoPlay] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const [selectedModel, setSelectedModel] = useState({
+    id: typeof window !== "undefined" ? localStorage.getItem("preferredModelId") || "gemini-2.0-flash" : "gemini-2.0-flash",
+    provider: typeof window !== "undefined" ? localStorage.getItem("preferredModelProvider") || "gemini" : "gemini",
+    name: typeof window !== "undefined" ? localStorage.getItem("preferredModelName") || "Gemini 2.0 Flash" : "Gemini 2.0 Flash"
+  });
+
+  const availableModels = [
+    { id: "gemini-2.0-flash", provider: "gemini", name: "Gemini 2.0 Flash (Fast)" },
+    { id: "gemini-1.5-pro", provider: "gemini", name: "Gemini 1.5 Pro (Deep)" },
+    { id: "gpt-4o-mini", provider: "openai", name: "GPT-4o Mini (Speed)" },
+    { id: "gpt-4o", provider: "openai", name: "GPT-4o (Smart)" },
+  ];
+
+  const updateModel = (m: typeof availableModels[0]) => {
+    setSelectedModel(m);
+    localStorage.setItem("preferredModelId", m.id);
+    localStorage.setItem("preferredModelProvider", m.provider);
+    localStorage.setItem("preferredModelName", m.name);
+    setShowSettings(false);
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -122,6 +145,7 @@ export default function DoctorAIChat() {
 
     try {
       setIsFetchingContext(true);
+      setDbStatus("syncing");
       let readingsContext: any[] = [];
       
       // Attempt to get context from Supabase securely
@@ -134,16 +158,17 @@ export default function DoctorAIChat() {
             .order("created_at", { ascending: false })
             .limit(12);
           
-          if (!error) readingsContext = data || [];
+          if (error) throw error;
+          readingsContext = data || [];
+          setDbStatus("connected");
         } catch (sbErr) {
           console.warn("Medical Context Sync Issue:", sbErr);
+          setDbStatus("error");
         }
       }
       setIsFetchingContext(false);
 
       const apiUrl = "/api/chat";
-      const modelId = typeof window !== "undefined" ? localStorage.getItem("preferredModelId") : null;
-      const provider = typeof window !== "undefined" ? localStorage.getItem("preferredModelProvider") : null;
       
       const res = await fetch(apiUrl, {
         method: "POST",
@@ -154,8 +179,8 @@ export default function DoctorAIChat() {
           lang,
           userName: user?.firstName || "",
           context: readingsContext,
-          modelId,
-          provider
+          modelId: selectedModel.id,
+          provider: selectedModel.provider
         }),
       });
 
@@ -262,7 +287,9 @@ export default function DoctorAIChat() {
                   <motion.div 
                     animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-medical-black shadow-[0_0_10px_#22c55e]" 
+                    className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-medical-black shadow-lg ${
+                      dbStatus === "connected" ? "bg-green-500" : dbStatus === "syncing" ? "bg-yellow-500" : "bg-red-500"
+                    }`} 
                   />
                 </div>
                 <div>
@@ -270,13 +297,73 @@ export default function DoctorAIChat() {
                     <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white">{t("doctor_ai")}</h3>
                     <div className="px-2 py-0.5 rounded-full bg-medical-cyan/10 border border-medical-cyan/20 text-[8px] font-black text-medical-cyan uppercase">{t("clinical")}</div>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <Activity className="w-3 h-3 text-green-400" />
-                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t("live_sync")}</span>
+                  <div className="flex items-center gap-1.5 mt-0.5" onClick={() => handleSend()} title="Retry Sync">
+                    <Activity className={`w-3 h-3 ${dbStatus === "connected" ? "text-green-400" : "text-red-400"}`} />
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                       {dbStatus === "connected" ? t("live_sync") : dbStatus === "syncing" ? t("syncing") : t("db_error")}
+                    </span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <div className="relative">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setShowSettings(!showSettings)}
+                    className={`p-2.5 rounded-xl border transition-all flex items-center gap-2 ${
+                      showSettings 
+                        ? "bg-medical-cyan/20 border-medical-cyan text-medical-cyan shadow-[0_0_15px_rgba(0,229,255,0.2)]" 
+                        : "bg-white/5 border-white/5 text-gray-500 hover:text-white"
+                    }`}
+                  >
+                    <BrainCircuit className="w-5 h-5" />
+                  </motion.button>
+                  
+                  <AnimatePresence>
+                    {showSettings && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                        className="absolute right-0 mt-3 w-64 bg-medical-dark/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 z-[90] space-y-4"
+                      >
+                         <div className="text-[10px] font-black uppercase tracking-widest text-medical-cyan border-b border-white/5 pb-2">{t("select_engine")}</div>
+                         <div className="space-y-1">
+                            {availableModels.map((m) => (
+                               <button
+                                 key={m.id}
+                                 onClick={() => updateModel(m)}
+                                 className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-all flex items-center justify-between ${
+                                    selectedModel.id === m.id 
+                                      ? "bg-medical-cyan/20 text-medical-cyan border border-medical-cyan/30" 
+                                      : "text-gray-400 hover:bg-white/5 hover:text-white"
+                                 }`}
+                               >
+                                  {m.name}
+                                  {selectedModel.id === m.id && <Sparkles className="w-3 h-3" />}
+                               </button>
+                            ))}
+                         </div>
+                         <div className="pt-2 border-t border-white/5">
+                            <button
+                              onClick={toggleAutoPlay}
+                              className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white transition-colors"
+                            >
+                               <span>Voice Auto-Play</span>
+                               <div className={`w-8 h-4 rounded-full relative transition-colors ${autoPlay ? 'bg-medical-cyan' : 'bg-gray-700'}`}>
+                                  <motion.div 
+                                    animate={{ x: autoPlay ? 16 : 2 }}
+                                    className="absolute top-1 w-2 h-2 bg-white rounded-full shadow-sm"
+                                  />
+                               </div>
+                            </button>
+                         </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
@@ -412,15 +499,14 @@ export default function DoctorAIChat() {
                     </motion.button>
                  </div>
               </div>
-              <div className="mt-4 flex items-center justify-center gap-4 text-[8px] font-black uppercase tracking-[0.4em] text-gray-500">
+              <div className="mt-4 flex items-center justify-between gap-4 text-[8px] font-black uppercase tracking-[0.4em] text-gray-500 px-2">
                  <div className="flex items-center gap-1.5">
                     <ShieldAlert className="w-3 h-3" />
                     {t("medical_advisor_only")}
                  </div>
-                 <div className="w-1 h-1 bg-white/10 rounded-full" />
                  <div className="flex items-center gap-1.5">
-                    <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
-                    {t("system_active")}
+                    <BrainCircuit className="w-3 h-3 text-medical-cyan/50" />
+                    {selectedModel.name}
                  </div>
               </div>
             </footer>

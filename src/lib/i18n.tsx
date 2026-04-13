@@ -236,6 +236,9 @@ export const dict: Translations = {
     ai_greeting: "Welcome {name}. I am your dedicated Doctor AI. I've successfully synchronized with your metabolic history and am ready to provide real-time clinical insights. How can I assist you today?",
     ai_greeting_name_fallback: "there",
     ai_fallback: "I apologize, but I'm having trouble connecting to the medical AI system. Please try again.",
+    db_error: "DB Connection Error",
+    syncing: "Syncing Data...",
+    select_engine: "Select AI Engine",
   },
   fr: {
     dashboard: "Tableau de bord",
@@ -462,6 +465,9 @@ export const dict: Translations = {
     ai_greeting: "Bienvenue {name}. Je suis votre Docteur IA dédié. Je me suis synchronisé avec votre historique métabolique et je suis prêt à vous fournir des informations cliniques en temps réel. Comment puis-je vous aider aujourd'hui ?",
     ai_greeting_name_fallback: "mon ami",
     ai_fallback: "Je m'excuse, mais j'ai des difficultés à me connecter au système médical IA. Veuillez réessayer.",
+    db_error: "Erreur de Connexion BDD",
+    syncing: "Mise à jour...",
+    select_engine: "Choisir le Moteur IA",
   },
   ar: {
     dashboard: "لوحة القيادة",
@@ -688,6 +694,9 @@ export const dict: Translations = {
     ai_greeting: "أهلاً بك {name}. أنا دكتور الذكاء الاصطناعي الخاص بك. لقد قمت بمزامنة سجل بياناتك الحالي، وأنا مستعد لتحليل مستويات الجلوكوز لديك وتقديم نصائح دقيقة. كيف يمكنني مساعدتك الآن؟",
     ai_greeting_name_fallback: "صديقي",
     ai_fallback: "عذراً، أواجه صعوبة في الاتصال بالنظام الطبي. يرجى المحاولة مرة أخرى.",
+    db_error: "خطأ في قاعدة البيانات",
+    syncing: "جاري المزامنة...",
+    select_engine: "اختر محرك الذكاء",
   }
 };
 

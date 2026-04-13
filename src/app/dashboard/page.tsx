@@ -95,6 +95,7 @@ export default function DashboardPage() {
   const { user, isLoaded } = useUser();
   const [readings, setReadings] = useState<GlucoseReading[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dbError, setDbError] = useState(false);
   const [aiInsight, setAiInsight] = useState<string>("");
   const [insightLoading, setInsightLoading] = useState(false);
   const [lastAnalyzed, setLastAnalyzed] = useState<string>("");
@@ -229,6 +230,7 @@ export default function DashboardPage() {
     }
     
     setLoading(true);
+    setDbError(false);
     try {
       // Show cached data immediately for fast UI, but don't trigger insights from it
       const cacheKey = `dashboard_readings_${user.id}_${timeRange}`;
@@ -258,7 +260,9 @@ export default function DashboardPage() {
         
       const { data, error } = await query;
         
-      if (!error && data) {
+      if (error) throw error;
+      
+      if (data) {
         const deletedStr = localStorage.getItem("deleted_readings") || "[]";
         const deletedIds = JSON.parse(deletedStr);
         const editedStr = localStorage.getItem("edited_readings") || "{}";
@@ -283,7 +287,8 @@ export default function DashboardPage() {
         await runInsights(transformedData);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Database Connection Issue:", err);
+      setDbError(true);
     } finally {
       setLoading(false);
     }
@@ -371,6 +376,35 @@ export default function DashboardPage() {
       animate={{ opacity: 1 }}
       className="container mx-auto px-4 py-6 md:py-10 space-y-6 md:space-y-8 pb-10"
     >
+      <AnimatePresence>
+        {dbError && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="w-full bg-red-500/10 border border-red-500/20 rounded-[2rem] p-6 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-md"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-red-500/20 rounded-2xl">
+                <AlertCircle className="w-6 h-6 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-white font-black uppercase tracking-widest text-xs">{t("db_error")}</h3>
+                <p className="text-red-200/60 text-xs font-medium mt-1">{t("syncing_context")}</p>
+              </div>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => fetchData()}
+              className="px-6 py-2.5 bg-red-500 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-red-500/20 transition-all"
+            >
+              {t("confirm")} {t("live_sync")}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-gradient-to-br from-medical-dark to-medical-black p-6 md:p-8 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden group">
         <div className="absolute inset-0 bg-gradient-to-r from-medical-cyan/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
         <div className="relative z-10">

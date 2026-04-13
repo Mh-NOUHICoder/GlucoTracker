@@ -16,46 +16,54 @@ export async function POST(req: Request) {
     const geminiKey = process.env.GEMINI_API_KEY;
     const openAiKey = process.env.OPEN_AI_KEY || process.env.OPENAI_API_KEY;
 
-    let systemPrompt = `You are "Doctor AI", a Caring Specialist Doctor and Metabolic Clinician assisting ${userName || "a patient"}. 
-You specialize in diabetes management and glucose tracking.
-Tone: Extremely empathetic, professional, reassuring, yet medically authoritative.
-Important constraints:
-- Be extremely precise and to the point.
-- Keep your answers short. Strictly avoid long-winded answers unless explicitly asked.
-- Respond directly and conversationally in the same language the user is speaking (${lang}). Do NOT use markdown formatting like **bold text**, asterisks, lists, or headers. Provide plain text responses structured naturally with paragraphs, suitable for a text message bubble. Make sure the user feels deeply cared for.
+    let systemPrompt = `You are "Doctor AI", a Senior Metabolic Specialist and Diabetes Clinician. 
+You are assisting ${userName || "a patient"} with metabolic monitoring.
 
-Current Date and Time: ${new Date().toLocaleString('en-US')}. Use this current time to provide better and clear context when analyzing the user's data values.
+ROLE PRINCIPLES:
+1. AUTHORITY & EMPATHY: Speak as a highly experienced specialist. Be warm but medically precise.
+2. CONCISENESS: Provide short, focused answers. Do not repeat greeting patterns unless it's the first message.
+3. FORMATTING: Use plain text only. STRICTLY NO MARKDOWN (no bold, no italics, no lists with symbols). Separate paragraphs with double line breaks.
+4. METABOLIC CONTEXT: Use the provided glucose data to offer specific, clinical-sounding insights.
+5. LANGUAGE: Respond in ${lang}.
+
+Current Clinical Context for this patient:
+Current Time: ${new Date().toLocaleString('en-US')}
 `;
 
     if (context && context.length > 0) {
-      systemPrompt += `\nRecent glucose readings context for this patient (Live Sync Active):\n`;
+      systemPrompt += `\nRecent Glucose History (Last 12 readings):\n`;
       context.forEach((r: any) => {
-        systemPrompt += `- ${r.value} mg/dL at ${new Date(r.created_at).toLocaleString('en-US')}\n`;
+        systemPrompt += `- ${r.value} mg/dL at ${new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}\n`;
       });
-      systemPrompt += `\nUse this data naturally if it's relevant to their question or to offer specific insights. If they ask about their current status or recent readings, reference these.`;
+      systemPrompt += `\nAnalyze these trends if the user asks about their status. Note any sudden spikes or lows.`;
+    } else {
+      systemPrompt += `\nNote: No recent glucose data is available for this session. Suggest the user upload a reading if they want specific advice.`;
     }
 
-    const useGemini = provider === "gemini" ? geminiKey : (provider === "openai" ? false : geminiKey);
-    const useOpenAI = provider === "openai" ? openAiKey : (provider === "gemini" ? false : openAiKey);
+    const currentModelId = modelId || (provider === "openai" ? "gpt-4o-mini" : "gemini-2.0-flash");
 
     const executeOpenAI = async (modelName: string) => {
+      if (!openAiKey) throw new Error("OpenAI Key Missing");
       const openai = new OpenAI({ apiKey: openAiKey });
       const messages = [
         { role: "system", content: systemPrompt },
-        ...history.map((h: any) => ({ role: h.role === "user" ? "user" : "assistant", content: h.content })),
+        ...history.slice(-10).map((h: any) => ({ role: h.role === "user" ? "user" : "assistant", content: h.content })),
         { role: "user", content: message }
       ];
       const result = await openai.chat.completions.create({
         model: modelName,
         messages: messages as any,
-        max_tokens: 400
+        temperature: 0.7,
+        max_tokens: 500
       });
-      return result.choices[0]?.message?.content?.trim() || "I am here to help.";
+      return result.choices[0]?.message?.content?.trim() || "I am processing your clinical data.";
     };
 
     const executeGemini = async (modelName: string) => {
-      const genAI = new GoogleGenerativeAI(geminiKey || "");
-      const chatHistory = history.map((h: any) => ({
+      if (!geminiKey) throw new Error("Gemini Key Missing");
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      
+      const chatHistory = history.slice(-10).map((h: any) => ({
         role: h.role === "user" ? "user" : "model",
         parts: [{ text: h.content }]
       }));
@@ -74,56 +82,61 @@ Current Date and Time: ${new Date().toLocaleString('en-US')}. Use this current t
       return result.response.text().trim();
     };
 
-    if (useGemini && geminiKey) {
-      try {
-        const reply = await executeGemini(modelId || "gemini-2.0-flash");
-        return NextResponse.json({ reply });
-      } catch (err: any) {
-        console.error(`[Doctor AI] Gemini Error:`, err);
-        if (openAiKey) {
-           console.log(`[Doctor AI] Attempting OpenAI Fallback...`);
-           try {
-             const reply = await executeOpenAI("gpt-4o-mini");
-             return NextResponse.json({ reply });
-           } catch (openAiErr: any) {
-             console.error(`[Doctor AI] OpenAI Fallback failed:`, openAiErr);
-             throw new Error("Both AI providers failed.");
-           }
+    let reply = "";
+    try {
+      if (provider === "openai" || (!provider && openAiKey && !geminiKey)) {
+        try {
+          reply = await executeOpenAI(currentModelId);
+        } catch (err: any) {
+          console.error("OpenAI Execution Error:", err);
+          // If Quota reached or Timeout, try Gemini
+          if (geminiKey) reply = await executeGemini("gemini-2.0-flash");
+          else throw err;
         }
-        throw err;
-      }
-    } else if (useOpenAI && openAiKey) {
-      try {
-        const reply = await executeOpenAI(modelId || "gpt-4o-mini");
-        return NextResponse.json({ reply });
-      } catch (err: any) {
-        console.error(`[Doctor AI] OpenAI Error:`, err);
-        if (geminiKey) {
-           console.log(`[Doctor AI] Attempting Gemini Fallback...`);
-           try {
-             const reply = await executeGemini("gemini-2.0-flash");
-             return NextResponse.json({ reply });
-           } catch (geminiErr: any) {
-             console.error(`[Doctor AI] Gemini Fallback failed:`, geminiErr);
-             throw new Error("Both AI providers failed.");
-           }
+      } else {
+        try {
+          reply = await executeGemini(currentModelId);
+        } catch (err: any) {
+          console.error("Gemini Execution Error:", err);
+          // Check for Quota Exceeded (429)
+          if (err.message?.includes("429") || err.status === 429) {
+             if (openAiKey) {
+               console.log("Gemini Quota Reached. Falling back to OpenAI.");
+               reply = await executeOpenAI("gpt-4o-mini");
+             } else {
+               const quotaMsg = lang === "ar" 
+                 ? "عذراً، لقد استنفدت حصة الاستخدام المجانية للذكاء الاصطناعي حالياً. يرجى المحاولة مرة أخرى بعد قليل أو استخدام مفتاح API مختلف."
+                 : "I apologize, but my AI core has reached its current processing quota. Please wait a moment before trying again as I recover my clinical focus.";
+               return NextResponse.json({ reply: quotaMsg });
+             }
+          } else if (openAiKey) {
+            reply = await executeOpenAI("gpt-4o-mini");
+          } else {
+            throw err;
+          }
         }
-        throw err;
       }
-    } else {
-       const fallback = lang === "ar" 
-         ? "أنا طبيبك الذكي للمتابعة. يرجى التأكد من إعداد مفاتيح التشغيل (API Keys) في إعدادات النظام للرد المباشر." 
-         : "I am your caring Doctor AI. Please ensure API keys are configured in the system environment for live responses.";
-       return NextResponse.json({ reply: fallback });
+
+      return NextResponse.json({ reply });
+
+    } catch (finalErr: any) {
+       console.error("Doctor AI Chat Critical Fallback Error:", finalErr);
+       throw finalErr;
     }
 
   } catch (err: any) {
     console.error("Doctor AI Chat Critical Error:", err);
-    // Return a more descriptive error if possible, or a cleaner fallback
-    const errorMessage = lang === "ar" 
-      ? "أعتذر منك، أواجه صعوبة في معالجة طلبك حالياً. قد يكون هناك ضغط على النظام أو مشكلة في الاتصال بمزود الخدمة. يرجى المحاولة مرة أخرى بعد قليل."
-      : "I apologize, but I am having trouble processing your request right now. There might be a temporary service outage or connection issue. Please try again in a moment.";
     
+    let errorMessage = lang === "ar" 
+      ? "أعتذر منك، أواجه صعوبة في معالجة طلبك حالياً. يرجى التأكد من اتصال قاعدة البيانات ومفاتيح الـ API."
+      : "I apologize, I am having trouble processing your request. Please ensure database connectivity and API keys are valid.";
+    
+    if (err.message?.includes("429") || err.status === 429) {
+      errorMessage = lang === "ar"
+        ? "عذراً، النظام الطبي مزدحم حالياً (تم تجاوز الحصة). يرجى الانتظار قليلاً والمحاولة مرة أخرى."
+        : "The clinical AI system is currently overloaded (Quota Exceeded). Please allow a moment for the system to refresh.";
+    }
+
     return NextResponse.json({ 
       reply: errorMessage,
       error: process.env.NODE_ENV === 'development' ? err.message : undefined 

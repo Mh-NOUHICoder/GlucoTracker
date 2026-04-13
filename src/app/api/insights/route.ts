@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     const preferredModel = (modelId && provider) ? { id: modelId, provider } : null;
 
     const baseCascade = [
-      { provider: "gemini", id: "gemini-2.5-flash" },
+      { provider: "gemini", id: "gemini-2.0-flash" },
       { provider: "openai", id: "gpt-4o-mini" }
     ];
 
@@ -132,14 +132,15 @@ export async function POST(req: Request) {
               { role: "system", content: "You are a metabolic health assistant. Mention the latest value exactly. Take the time of day and possible meal times into account when deducing patterns." },
               { role: "user", content: "Latest: " + readings[0].value + "\nContext:\n" + context }
             ],
-            max_tokens: 100
+            max_tokens: 150
           });
           insight = res.choices[0]?.message?.content?.trim() || "";
         }
 
         if (insight && insight.length > 5) break; 
-      } catch {
-        console.warn(`Insight Cascade FAILED`);
+      } catch (err: any) {
+        console.warn(`Insight Cascade Failed for ${model.id}:`, err.message || err);
+        // If 429, don't wait, just move to next
       }
     }
 
