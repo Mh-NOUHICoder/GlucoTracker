@@ -109,6 +109,7 @@ export const dict: Translations = {
     profile_updated: "Profile updated!",
     data_manage: "Data Management",
     sign_out: "Sign Out",
+    switch_account: "Switch Account",
     estimated_a1c: "Estimated A1c",
     sync_data: "Synchronizing Data...",
     ai_analysis: "AI Analysis",
@@ -220,6 +221,21 @@ export const dict: Translations = {
     time: "Time",
     select_all: "Select All",
     deselect_all: "Deselect All",
+    doctor_ai: "Doctor AI",
+    clinical: "Clinical",
+    live_sync: "Live Sync",
+    ai_assistant: "AI Assistant",
+    initializing_core: "Initializing AI...",
+    medical_advisor_only: "Medical Advisor Only",
+    system_active: "System Active",
+    stop_audio: "STOP AUDIO",
+    voice_playback: "VOICE PLAYBACK",
+    syncing_context: "SYNCING CONTEXT...",
+    processing_reply: "PROCESSING REPLY...",
+    enter_inquiry: "Enter clinical inquiry...",
+    ai_greeting: "Welcome {name}. I am your dedicated Doctor AI. I've successfully synchronized with your metabolic history and am ready to provide real-time clinical insights. How can I assist you today?",
+    ai_greeting_name_fallback: "there",
+    ai_fallback: "I apologize, but I'm having trouble connecting to the medical AI system. Please try again.",
   },
   fr: {
     dashboard: "Tableau de bord",
@@ -321,6 +337,7 @@ export const dict: Translations = {
     profile_updated: "Profil mis à jour !",
     data_manage: "Gestion des données",
     sign_out: "Se déconnecter",
+    switch_account: "Changer de compte",
     estimated_a1c: "Estimation de l'A1c",
     sync_data: "Synchronisation des données...",
     ai_analysis: "Analyse IA",
@@ -430,6 +447,21 @@ export const dict: Translations = {
     time: "Heure",
     select_all: "Tout sélectionner",
     deselect_all: "Tout désélectionner",
+    doctor_ai: "IA Docteur",
+    clinical: "Clinique",
+    live_sync: "Synchro Direct",
+    ai_assistant: "Assistant IA",
+    initializing_core: "Initialisation IA...",
+    medical_advisor_only: "Conseiller Médical Uniquement",
+    system_active: "Système Actif",
+    stop_audio: "ARRÊTER L'AUDIO",
+    voice_playback: "LECTURE VOCALE",
+    syncing_context: "SYNCHRONISATION DU CONTEXTE...",
+    processing_reply: "TRAITEMENT DE LA RÉPONSE...",
+    enter_inquiry: "Entrez votre demande...",
+    ai_greeting: "Bienvenue {name}. Je suis votre Docteur IA dédié. Je me suis synchronisé avec votre historique métabolique et je suis prêt à vous fournir des informations cliniques en temps réel. Comment puis-je vous aider aujourd'hui ?",
+    ai_greeting_name_fallback: "mon ami",
+    ai_fallback: "Je m'excuse, mais j'ai des difficultés à me connecter au système médical IA. Veuillez réessayer.",
   },
   ar: {
     dashboard: "لوحة القيادة",
@@ -531,6 +563,7 @@ export const dict: Translations = {
     profile_updated: "تم تحديث الملف الشخصي!",
     data_manage: "إدارة البيانات",
     sign_out: "تسجيل الخروج",
+    switch_account: "تبديل الحساب",
     estimated_a1c: "Hemoglobin A1c (تراكمي مقدر)",
     sync_data: "جاري مزامنة البيانات...",
     ai_analysis: "تحليل الذكاء الاصطناعي",
@@ -640,7 +673,66 @@ export const dict: Translations = {
     time: "الوقت",
     select_all: "تحديد الكل",
     deselect_all: "إلغاء تحديد الكل",
+    doctor_ai: "طبيب الذكاء الاصطناعي",
+    clinical: "احترافي",
+    live_sync: "مزامنة مباشرة",
+    ai_assistant: "مساعد الذكاء الاصطناعي",
+    initializing_core: "جاري تهيئة النظام...",
+    medical_advisor_only: "مستشار طبي فقط",
+    system_active: "النظام نشط",
+    stop_audio: "إيقاف الصوت",
+    voice_playback: "تشغيل الصوت",
+    syncing_context: "جاري مزامنة البيانات...",
+    processing_reply: "جاري معالجة الرد...",
+    enter_inquiry: "أدخل استفسارك الطبي هنا...",
+    ai_greeting: "أهلاً بك {name}. أنا دكتور الذكاء الاصطناعي الخاص بك. لقد قمت بمزامنة سجل بياناتك الحالي، وأنا مستعد لتحليل مستويات الجلوكوز لديك وتقديم نصائح دقيقة. كيف يمكنني مساعدتك الآن؟",
+    ai_greeting_name_fallback: "صديقي",
+    ai_fallback: "عذراً، أواجه صعوبة في الاتصال بالنظام الطبي. يرجى المحاولة مرة أخرى.",
   }
+};
+
+export const translateName = (name: string, lang: Language) => {
+  const isArabic = (text: string) => /[\u0600-\u06FF]/.test(text);
+  if (lang !== "ar" || !name || isArabic(name)) return name;
+  
+  // Normalized common Arabic names to avoid literal transliteration bloat
+  const commonNames: Record<string, string> = {
+    'mohammed': 'محمد', 'mohammad': 'محمد', 'muhammad': 'محمد', 'mohamed': 'محمد',
+    'ahmed': 'أحمد', 'ahmad': 'أحمد',
+    'ali': 'علي', 'omar': 'عمر', 'osama': 'أسامة',
+    'fatima': 'فاطمة', 'noor': 'نور', 'layla': 'ليلى',
+    'yousef': 'يوسف', 'yosef': 'يوسف', 'yusuf': 'يوسف'
+  };
+
+  const normalizedInput = name.trim().toLowerCase();
+  if (commonNames[normalizedInput]) return commonNames[normalizedInput];
+
+  // Heuristic-based automatic transliteration
+  const rules = [
+    { en: 'sh', ar: 'ش' }, { en: 'kh', ar: 'خ' }, { en: 'gh', ar: 'غ' },
+    { en: 'th', ar: 'ث' }, { en: 'ch', ar: 'تش' }, { en: 'ph', ar: 'ف' },
+  ];
+
+  const charMap: Record<string, string> = {
+    'a': 'ا', 'b': 'ب', 'c': 'ك', 'd': 'د', 'e': '', 'f': 'ف', 'g': 'ج', 'h': 'ه', 'i': 'ي', 'j': 'ج', 
+    'k': 'ك', 'l': 'ل', 'm': 'م', 'n': 'ن', 'o': 'و', 'p': 'ب', 'q': 'ق', 'r': 'ر', 's': 'س', 't': 'ت', 
+    'u': 'و', 'v': 'ف', 'w': 'و', 'x': 'كس', 'y': 'ي', 'z': 'ز'
+  };
+
+  let res = normalizedInput;
+  // Handle double consonants (e.g., 'mm' -> 'm')
+  res = res.replace(/([b-df-hj-np-tv-z])\1/g, '$1');
+
+  rules.forEach(rule => {
+    res = res.split(rule.en).join(rule.ar);
+  });
+
+  return res.split('').map((char, i) => {
+    // If it's a vowel at the start, use Alif
+    if (i === 0 && 'aeiou'.includes(char)) return 'ا';
+    // Use the mapping if it exists, otherwise the char itself
+    return Object.prototype.hasOwnProperty.call(charMap, char) ? charMap[char] : char;
+  }).join('');
 };
 
 interface I18nContextType {

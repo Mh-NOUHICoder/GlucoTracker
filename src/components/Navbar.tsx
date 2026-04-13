@@ -15,10 +15,12 @@ import {
   Bell, 
   Bluetooth,
   Zap,
-  Globe
+  Globe,
+  LogOut,
+  Users
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion";
-import { SignInButton, useUser } from "@clerk/nextjs";
+import { SignInButton, useUser, useClerk } from "@clerk/nextjs";
 import { useI18n, Language } from "@/lib/i18n";
 
 const languages: { code: Language; label: string; flag: string }[] = [
@@ -80,6 +82,129 @@ function LanguageSwitcher() {
                 {lang === l.code && <div className="w-1 h-1 rounded-full bg-medical-cyan animate-pulse" />}
               </button>
             ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function UserMenu() {
+  const { user } = useUser();
+  const { signOut, openUserProfile } = useClerk();
+  const { t } = useI18n();
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  if (!user) return null;
+
+  return (
+    <div className="relative" ref={ref}>
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setIsOpen(!isOpen)}
+        className="relative group p-[1px] block"
+      >
+        <div className={`absolute inset-0 rounded-full border transition-colors duration-300 ${isOpen ? "border-medical-cyan border-2" : "border-medical-cyan/30 group-hover:border-medical-cyan"}`} />
+        <div className="absolute -top-0.5 -right-0.5 z-20">
+          <div className="w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-medical-black shadow-[0_0_8px_#22c55e] animate-pulse" />
+        </div>
+        <div className="relative w-9 h-9 rounded-full overflow-hidden bg-medical-black border border-white/5 mx-auto">
+          {user?.imageUrl ? (
+            <Image 
+              src={user.imageUrl} 
+              alt="Profile" 
+              width={36} 
+              height={36} 
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-medical-cyan">
+              <User className="w-4 h-4" />
+            </div>
+          )}
+        </div>
+        <div className="absolute inset-0 rounded-full bg-medical-cyan/0 group-hover:bg-medical-cyan/5 transition-colors pointer-events-none" />
+      </motion.button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="absolute top-full mt-3 right-0 w-64 bg-medical-dark/95 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-3xl z-[100] shadow-2xl p-2"
+          >
+            <div className="px-4 py-3 border-b border-white/5 mb-2 bg-white/5 rounded-xl">
+               <div className="flex flex-col gap-0.5">
+                 <p className="text-[10px] font-black tracking-[0.2em] text-medical-cyan uppercase truncate">
+                   {user?.fullName || 'Active Patient'}
+                 </p>
+                 <p className="text-[8px] font-medium text-gray-400 truncate tracking-wider opacity-70">
+                   {user?.primaryEmailAddress?.emailAddress}
+                 </p>
+               </div>
+            </div>
+
+            <div className="space-y-1">
+              <Link href="/profile" onClick={() => setIsOpen(false)}>
+                <motion.div 
+                  whileHover={{ x: 5, backgroundColor: "rgba(0, 229, 255, 0.1)" }}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white transition-all cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-medical-cyan/10 flex items-center justify-center">
+                    <User className="w-3.5 h-3.5 text-medical-cyan" />
+                  </div>
+                  <span>{t('profile')}</span>
+                </motion.div>
+              </Link>
+
+              <button 
+                onClick={() => {
+                  setIsOpen(false);
+                  openUserProfile(); 
+                }}
+                className="w-full"
+              >
+                <motion.div 
+                  whileHover={{ x: 5, backgroundColor: "rgba(0, 229, 255, 0.1)" }}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white transition-all cursor-pointer text-left"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-medical-cyan/10 flex items-center justify-center">
+                    <Users className="w-3.5 h-3.5 text-medical-cyan" />
+                  </div>
+                  <span>{t('switch_account')}</span>
+                </motion.div>
+              </button>
+
+              <div className="h-px bg-white/5 my-2 mx-2" />
+
+              <button 
+                onClick={() => signOut()}
+                className="w-full"
+              >
+                <motion.div 
+                  whileHover={{ x: 5, backgroundColor: "rgba(239, 68, 68, 0.1)" }}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-400/80 hover:text-red-400 transition-all cursor-pointer text-left"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center">
+                    <LogOut className="w-3.5 h-3.5" />
+                  </div>
+                  <span>{t('sign_out')}</span>
+                </motion.div>
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -201,39 +326,7 @@ export default function Navbar() {
             {!isLoaded ? (
               <div className="w-9 h-9 rounded-xl bg-white/5 animate-pulse" />
             ) : isSignedIn ? (
-              <Link href="/profile" className="flex items-center">
-                <motion.div 
-                  whileHover={{ scale: 1.05 }}
-                  className="relative group p-[1px]"
-                >
-                  {/* High-Definition Biometric Ring */}
-                  <div className="absolute inset-0 rounded-full border border-medical-cyan/30 group-hover:border-medical-cyan transition-colors" />
-                  
-                  {/* Status Indicator Dot */}
-                  <div className="absolute -top-0.5 -right-0.5 z-20">
-                    <div className="w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-medical-black shadow-[0_0_8px_#22c55e] animate-pulse" />
-                  </div>
-
-                  <div className="relative w-9 h-9 rounded-full overflow-hidden bg-medical-black border border-white/5 mx-auto">
-                    {user?.imageUrl ? (
-                      <Image 
-                        src={user.imageUrl} 
-                        alt="Profile" 
-                        width={36} 
-                        height={36} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-medical-cyan">
-                        <User className="w-4 h-4" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Subtle inner-glow overlay on hover */}
-                  <div className="absolute inset-0 rounded-full bg-medical-cyan/0 group-hover:bg-medical-cyan/5 transition-colors pointer-events-none" />
-                </motion.div>
-              </Link>
+              <UserMenu />
             ) : (
               <SignInButton mode="modal">
                 <button className="px-5 py-2 bg-medical-cyan text-black font-black uppercase text-[10px] tracking-widest rounded-xl shadow-lg hover:shadow-cyan-500/30 transition-all">

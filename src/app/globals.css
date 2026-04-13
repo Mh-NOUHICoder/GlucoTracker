@@ -108,3 +108,24 @@ label:has(input) {
     @apply w-2 h-2 rounded-full bg-medical-primary animate-pulse shadow-[0_0_10px_#00e5ff];
   }
 }
+
+/* Clerk UI Readability Fixes */
+.cl-rootBox, .cl-userButtonPopoverCard, .cl-card, .cl-modalContent {
+  color-scheme: dark;
+}
+
+.cl-headerTitle, .cl-socialButtonsBlockButtonText, .cl-navbarButton, .cl-breadcrumbsItem, .cl-userPreviewMainIdentifier, .cl-profileSectionTitle, .cl-accordionTriggerButton {
+  color: #ffffff !important;
+}
+
+.cl-navbarButton[data-active="true"] {
+  color: #00e5ff !important;
+}
+
+.cl-headerSubtitle, .cl-formFieldLabel, .cl-footerActionText, .cl-userPreviewSecondaryIdentifier, .cl-breadcrumbsSeparator {
+  color: #94a3b8 !important;
+}
+
+.cl-dividerText {
+  color: #475569 !important;
+}

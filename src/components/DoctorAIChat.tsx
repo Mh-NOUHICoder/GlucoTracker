@@ -17,7 +17,7 @@ import {
   BrainCircuit,
   MessageSquare
 } from "lucide-react";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, translateName } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 
 interface Message {
@@ -27,7 +27,7 @@ interface Message {
 
 export default function DoctorAIChat() {
   const { user, isLoaded } = useUser();
-  const { lang, dir } = useI18n();
+  const { lang, dir, t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -51,10 +51,9 @@ export default function DoctorAIChat() {
   // Initial Greeting with personalization
   useEffect(() => {
     if (isOpen && messages.length === 0 && isLoaded) {
-      const name = user?.firstName || (lang === "ar" ? "صديقي" : "there");
-      const greeting = lang === "ar" 
-        ? `أهلاً بك ${name}. أنا دكتور الذكاء الاصطناعي الخاص بك. لقد قمت بمزامنة سجل بياناتك الحالي، وأنا مستعد لتحليل مستويات الجلوكوز لديك وتقديم نصائح دقيقة. كيف يمكنني مساعدتك الآن؟`
-        : `Welcome ${name}. I am your dedicated Doctor AI. I've successfully synchronized with your metabolic history and am ready to provide real-time clinical insights. How can I assist you today?`;
+      const rawName = user?.firstName || t("ai_greeting_name_fallback");
+      const name = translateName(rawName, lang);
+      const greeting = t("ai_greeting").replace("{name}", name);
       
       // Delay greeting slightly for premium feel
       setTimeout(() => {
@@ -145,10 +144,7 @@ export default function DoctorAIChat() {
       setMessages((prev) => [...prev, { role: "ai", content: data.reply }]);
     } catch (error) {
       console.error("Doctor AI Connectivity Error:", error);
-      const fallback = lang === "ar" 
-        ? "عذراً، أواجه صعوبة في الاتصال بـ 'النواة العصبية'. يرجى المحاولة مرة أخرى أو التحقق من جودة الاتصال." 
-        : "I apologize, but I'm having trouble connecting to my clinical neural core. Please try again or check your connectivity.";
-      setMessages((prev) => [...prev, { role: "ai", content: fallback }]);
+      setMessages((prev) => [...prev, { role: "ai", content: t("ai_fallback") }]);
     } finally {
       setIsLoading(false);
       setIsFetchingContext(false);
@@ -182,12 +178,12 @@ export default function DoctorAIChat() {
                   className={`absolute right-full mr-5 px-4 py-2 bg-black/60 backdrop-blur-xl border border-medical-cyan/30 rounded-full shadow-[0_0_30px_rgba(0,229,255,0.2)] text-[11px] font-black uppercase tracking-[0.2em] text-medical-cyan hidden md:flex items-center gap-2`}
                 >
                   <BrainCircuit className="w-3.5 h-3.5" />
-                  {lang === 'ar' ? 'استشارة طبية ذكية' : 'AI Clinical Consult'}
+                  {t("ai_assistant")}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Neural Core Trigger */}
+            {/* AI Assistant Trigger */}
             <div className="relative group">
               <motion.div
                 animate={{ 
@@ -241,12 +237,12 @@ export default function DoctorAIChat() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white">Neural_OS v2.4</h3>
-                    <div className="px-2 py-0.5 rounded-full bg-medical-cyan/10 border border-medical-cyan/20 text-[8px] font-black text-medical-cyan uppercase">CLINICAL_AI</div>
+                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white">{t("doctor_ai")}</h3>
+                    <div className="px-2 py-0.5 rounded-full bg-medical-cyan/10 border border-medical-cyan/20 text-[8px] font-black text-medical-cyan uppercase">{t("clinical")}</div>
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <Activity className="w-3 h-3 text-green-400" />
-                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Live Metabolic Synchronization</span>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t("live_sync")}</span>
                   </div>
                 </div>
               </div>
@@ -267,7 +263,7 @@ export default function DoctorAIChat() {
               {messages.length === 0 && !isLoading && (
                 <div className="h-full flex flex-col items-center justify-center text-center opacity-40 py-10">
                    <MessageSquare className="w-12 h-12 mb-4 text-medical-cyan" />
-                   <div className="text-xs font-black uppercase tracking-[0.3em]">{lang === 'ar' ? 'جاري تهيئة النواة...' : 'Initializing Neural Core...'}</div>
+                   <div className="text-xs font-black uppercase tracking-[0.3em]">{t("initializing_core")}</div>
                 </div>
               )}
               
@@ -308,9 +304,9 @@ export default function DoctorAIChat() {
                       } ${dir === "rtl" ? "mr-12" : "ml-12"}`}
                     >
                       {playingIdx === idx ? (
-                        <> <Square className="w-3 h-3 fill-current" /> STOP_AUDIO </>
+                        <> <Square className="w-3 h-3 fill-current" /> {t("stop_audio")} </>
                       ) : (
-                        <> <Volume2 className="w-3.5 h-3.5" /> VOICE_PLAYBACK </>
+                        <> <Volume2 className="w-3.5 h-3.5" /> {t("voice_playback")} </>
                       )}
                     </motion.button>
                   )}
@@ -325,7 +321,7 @@ export default function DoctorAIChat() {
                    <div className="bg-white/5 backdrop-blur-md border border-white/10 p-4 rounded-[1.8rem] rounded-bl-none flex flex-col gap-2">
                      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-medical-cyan">
                         <Sparkles className="w-3.5 h-3.5" />
-                        {isFetchingContext ? 'SYNCING_CONTEXT...' : 'PROCESSING_CLINICAL_REPLY...'}
+                        {isFetchingContext ? t("syncing_context") : t("processing_reply")}
                      </div>
                      <div className="flex gap-1">
                         <motion.div animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1.2 }} className="w-1.5 h-1.5 bg-medical-cyan rounded-full" />
@@ -352,7 +348,7 @@ export default function DoctorAIChat() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleSend();
                       }}
-                      placeholder={lang === "ar" ? "أدخل استفسارك الطبي هنا..." : "Enter clinical inquiry..."}
+                      placeholder={t("enter_inquiry")}
                       className={`flex-1 bg-transparent py-3.5 text-sm text-white placeholder-gray-500 focus:outline-none ${dir === "rtl" ? "text-right" : "text-left"}`}
                       dir={dir}
                     />
@@ -374,12 +370,12 @@ export default function DoctorAIChat() {
               <div className="mt-4 flex items-center justify-center gap-4 text-[8px] font-black uppercase tracking-[0.4em] text-gray-500">
                  <div className="flex items-center gap-1.5">
                     <ShieldAlert className="w-3 h-3" />
-                    Medical Advisor Only
+                    {t("medical_advisor_only")}
                  </div>
                  <div className="w-1 h-1 bg-white/10 rounded-full" />
                  <div className="flex items-center gap-1.5">
                     <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
-                    System Active
+                    {t("system_active")}
                  </div>
               </div>
             </footer>

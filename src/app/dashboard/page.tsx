@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, translateName } from "@/lib/i18n";
 import GlucoseTrendChart from "@/components/GlucoseTrendChart";
 import dynamic from "next/dynamic";
 const PDFDownloadBtn = dynamic(() => import("@/components/PDFDownloadBtn"), { ssr: false });
@@ -381,7 +381,7 @@ export default function DashboardPage() {
             <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-white">{t("dashboard")}</h1>
           </div>
           <p className="text-gray-400 font-medium flex items-center gap-2 pl-1">
-            {isLoaded && user ? `${t("welcome_back")}, ${user.firstName || "Patient"}` : t("live_overview")}
+            {isLoaded && user ? `${t("welcome_back")}, ${translateName(user.firstName || "Patient", lang)}` : t("live_overview")}
           </p>
         </div>
         
