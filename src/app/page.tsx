@@ -2,9 +2,10 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Activity, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, Activity, ShieldCheck, Zap, Smartphone } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import React, { useMemo } from "react";
+import PWAInstallButton from "@/components/PWAInstallButton";
 
 // ── Background Components ─────────────────────────────────────────────────────
 
@@ -173,6 +174,7 @@ export default function Home() {
               </motion.button>
             </Link>
           </motion.div>
+
         </div>
 
         {/* Feature Highlights */}
@@ -222,6 +224,67 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
+        </div>
+
+        {/* PWA Section - Deep Integration */}
+        <div className="w-full mt-40 px-6 max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="relative p-12 md:p-20 rounded-[4rem] border border-medical-cyan/20 bg-medical-cyan/[0.03] backdrop-blur-3xl overflow-hidden group"
+          >
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-16">
+              <div className="flex-1 space-y-8 text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-medical-cyan/10 border border-medical-cyan/20">
+                  <Smartphone className="w-4 h-4 text-medical-cyan" />
+                  <span className="text-[10px] font-black tracking-widest uppercase text-medical-cyan">Next-Gen App</span>
+                </div>
+                <h2 className="text-4xl md:text-6xl font-black text-white italic -skew-x-3 tracking-tight">
+                  {t('pwa_title')}
+                </h2>
+                <p className="text-xl text-gray-400 leading-relaxed font-medium max-w-2xl">
+                  {t('pwa_desc')}
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4">
+                  <div className="space-y-2">
+                    <h4 className="text-white font-black uppercase tracking-widest text-sm flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-medical-cyan" />
+                      {t('pwa_feature_offline')}
+                    </h4>
+                    <p className="text-gray-500 text-sm">{t('pwa_feature_offline_desc')}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-white font-black uppercase tracking-widest text-sm flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-medical-cyan" />
+                      {t('pwa_feature_speed')}
+                    </h4>
+                    <p className="text-gray-500 text-sm">{t('pwa_feature_speed_desc')}</p>
+                  </div>
+                </div>
+
+                <div className="pt-6">
+                  <PWAInstallButton />
+                </div>
+              </div>
+
+              <div className="relative w-full md:w-[400px] aspect-[9/16] rounded-[3rem] border border-white/10 bg-medical-black overflow-hidden shadow-2xl">
+                <div className="absolute inset-0 bg-gradient-to-b from-medical-cyan/10 to-transparent" />
+                <div className="absolute inset-x-0 top-0 h-8 flex items-center justify-center">
+                   <div className="w-12 h-1 rounded-full bg-white/10" />
+                </div>
+                <img 
+                  src="/screenshots/mobile.png" 
+                  alt="App Mockup" 
+                  className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" 
+                />
+              </div>
+            </div>
+
+            {/* Background elements */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-medical-cyan/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
+          </motion.div>
         </div>
 
         {/* Stats Scroll Indicator */}

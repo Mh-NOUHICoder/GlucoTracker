@@ -15,6 +15,7 @@ export async function POST(req: Request) {
 
     const geminiKey = process.env.GEMINI_API_KEY;
     const openAiKey = process.env.OPEN_AI_KEY || process.env.OPENAI_API_KEY;
+    const groqKey = process.env.Groq_API_KEY;
 
     let systemPrompt = `You are "Doctor AI", a Senior Metabolic Specialist and Diabetes Clinician. 
 You are assisting ${userName || "a patient"} with metabolic monitoring.
@@ -40,11 +41,31 @@ Current Time: ${new Date().toLocaleString('en-US')}
       systemPrompt += `\nNote: No recent glucose data is available for this session. Suggest the user upload a reading if they want specific advice.`;
     }
 
-    const currentModelId = modelId || (provider === "openai" ? "gpt-4o-mini" : "gemini-2.0-flash");
+    const currentModelId = modelId || (provider === "openai" ? "gpt-4o-mini" : provider === "groq" ? "llama-3.3-70b-versatile" : "gemini-2.0-flash");
 
     const executeOpenAI = async (modelName: string) => {
       if (!openAiKey) throw new Error("OpenAI Key Missing");
       const openai = new OpenAI({ apiKey: openAiKey });
+      const messages = [
+        { role: "system", content: systemPrompt },
+        ...history.slice(-10).map((h: any) => ({ role: h.role === "user" ? "user" : "assistant", content: h.content })),
+        { role: "user", content: message }
+      ];
+      const result = await openai.chat.completions.create({
+        model: modelName,
+        messages: messages as any,
+        temperature: 0.7,
+        max_tokens: 500
+      });
+      return result.choices[0]?.message?.content?.trim() || "I am processing your clinical data.";
+    };
+
+    const executeGroq = async (modelName: string) => {
+      if (!groqKey) throw new Error("Groq Key Missing");
+      const openai = new OpenAI({ 
+        apiKey: groqKey,
+        baseURL: "https://api.groq.com/openai/v1"
+      });
       const messages = [
         { role: "system", content: systemPrompt },
         ...history.slice(-10).map((h: any) => ({ role: h.role === "user" ? "user" : "assistant", content: h.content })),
@@ -83,55 +104,93 @@ Current Time: ${new Date().toLocaleString('en-US')}
     };
 
     let reply = "";
-    try {
-      if (provider === "openai" || (!provider && openAiKey && !geminiKey)) {
+    
+    const tryGeminiFallback = async (originalErr: any) => {
+      if (geminiKey) {
+        console.log("Attempting Gemini fallback...");
         try {
-          reply = await executeOpenAI(currentModelId);
-        } catch (err: any) {
-          console.error("OpenAI Execution Error:", err);
-          // If Quota reached or Timeout, try Gemini
-          if (geminiKey) reply = await executeGemini("gemini-2.0-flash");
-          else throw err;
-        }
-      } else {
-        try {
-          reply = await executeGemini(currentModelId);
-        } catch (err: any) {
-          console.error("Gemini Execution Error:", err);
-          // Check for Quota Exceeded (429)
-          if (err.message?.includes("429") || err.status === 429) {
-             if (openAiKey) {
-               console.log("Gemini Quota Reached. Falling back to OpenAI.");
-               reply = await executeOpenAI("gpt-4o-mini");
-             } else {
-               const quotaMsg = lang === "ar" 
-                 ? "عذراً، لقد استنفدت حصة الاستخدام المجانية للذكاء الاصطناعي حالياً. يرجى المحاولة مرة أخرى بعد قليل أو استخدام مفتاح API مختلف."
-                 : "I apologize, but my AI core has reached its current processing quota. Please wait a moment before trying again as I recover my clinical focus.";
-               return NextResponse.json({ reply: quotaMsg });
-             }
-          } else if (openAiKey) {
-            reply = await executeOpenAI("gpt-4o-mini");
-          } else {
-            throw err;
-          }
+          return await executeGemini("gemini-2.0-flash");
+        } catch (fallbackErr) {
+          console.log("Gemini fallback also failed.");
         }
       }
+      throw originalErr;
+    };
 
-      return NextResponse.json({ reply });
+    const tryOpenAIFallback = async (originalErr: any) => {
+      if (openAiKey) {
+         console.log("Attempting OpenAI fallback...");
+         try {
+           return await executeOpenAI("gpt-4o-mini");
+         } catch (fallbackErr) {
+           console.log("OpenAI fallback also failed.");
+           // If OpenAI fallback fails, we want to know if it was a quota error.
+           // Throwing fallbackErr preserves the 429 status for the final catch.
+           throw fallbackErr;
+         }
+      }
+      throw originalErr;
+    };
 
-    } catch (finalErr: any) {
-       console.error("Doctor AI Chat Critical Fallback Error:", finalErr);
-       throw finalErr;
+    const tryGroqFallback = async (originalErr: any) => {
+      if (groqKey) {
+         console.log("Attempting Groq fallback...");
+         try {
+           return await executeGroq("llama-3.3-70b-versatile");
+         } catch (fallbackErr) {
+           console.log("Groq fallback also failed.");
+           throw fallbackErr;
+         }
+      }
+      throw originalErr;
+    };
+
+    if (provider === "groq") {
+      try {
+        reply = await executeGroq(currentModelId);
+      } catch (err: any) {
+        reply = await tryGeminiFallback(err);
+      }
+    } else if (provider === "openai" || (!provider && openAiKey && !geminiKey)) {
+      try {
+        reply = await executeOpenAI(currentModelId);
+      } catch (err: any) {
+        reply = await tryGroqFallback(err);
+      }
+    } else {
+      try {
+        reply = await executeGemini(currentModelId);
+      } catch (err: any) {
+        // Only fallback to Groq or OpenAI if it's a quota issue or generic error
+        try {
+          reply = await tryGroqFallback(err);
+        } catch (fallbackErr) {
+          reply = await tryOpenAIFallback(fallbackErr);
+        }
+      }
     }
 
+    return NextResponse.json({ reply });
+
   } catch (err: any) {
-    console.error("Doctor AI Chat Critical Error:", err);
+    // Determine if it is a quota issue
+    const isQuotaError = 
+      err?.status === 429 || 
+      err?.code === 'insufficient_quota' || 
+      err?.message?.includes("429") || 
+      err?.message?.includes("quota");
+
+    if (isQuotaError) {
+      console.warn("Doctor AI Chat Quota Exceeded (429). Returning graceful fallback message.");
+    } else {
+      console.error("Doctor AI Chat Error:", err?.message || "Unknown Error");
+    }
     
     let errorMessage = lang === "ar" 
-      ? "أعتذر منك، أواجه صعوبة في معالجة طلبك حالياً. يرجى التأكد من اتصال قاعدة البيانات ومفاتيح الـ API."
-      : "I apologize, I am having trouble processing your request. Please ensure database connectivity and API keys are valid.";
+      ? "أعتذر منك، أواجه صعوبة في معالجة طلبك حالياً."
+      : "I apologize, I am having trouble processing your request.";
     
-    if (err.message?.includes("429") || err.status === 429) {
+    if (isQuotaError) {
       errorMessage = lang === "ar"
         ? "عذراً، النظام الطبي مزدحم حالياً (تم تجاوز الحصة). يرجى الانتظار قليلاً والمحاولة مرة أخرى."
         : "The clinical AI system is currently overloaded (Quota Exceeded). Please allow a moment for the system to refresh.";
@@ -139,7 +198,7 @@ Current Time: ${new Date().toLocaleString('en-US')}
 
     return NextResponse.json({ 
       reply: errorMessage,
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+      error: process.env.NODE_ENV === 'development' ? (err?.message || "API Error") : undefined 
     }, { status: 200 });
   }
 }

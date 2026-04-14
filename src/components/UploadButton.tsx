@@ -227,6 +227,28 @@ export default function UploadButton() {
 
   const handleSave = async (value: number, unit: string) => {
     if (user) {
+      if (!navigator.onLine) {
+        try {
+          const { db } = await import("@/lib/db");
+          await db.offlineReadings.add({
+            user_id: user.id,
+            value: value,
+            notes: unit,
+            source: isManualEntry ? "manual" : "ai_vision",
+            is_valid: true,
+            created_at: new Date().toISOString()
+          });
+          toast.success(t("offline_reading_saved") || "Saved offline. Will sync later.");
+          setIsSaved(true);
+          setHasUnsavedAnalysis(false);
+          return;
+        } catch (err) {
+          console.error("Dexie offline save failed:", err);
+          toast.error("Failed to save offline.");
+          return;
+        }
+      }
+
       try {
         const { error: sbError } = await supabase.from("glucose_readings").insert({
           user_id: user.id,

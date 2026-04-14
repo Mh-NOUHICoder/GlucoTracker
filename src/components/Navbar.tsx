@@ -17,7 +17,8 @@ import {
   Zap,
   Globe,
   LogOut,
-  Users
+  Users,
+  DownloadCloud
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion";
 import { SignInButton, useUser, useClerk } from "@clerk/nextjs";
@@ -88,6 +89,8 @@ function LanguageSwitcher() {
     </div>
   );
 }
+
+
 
 function UserMenu() {
   const { user } = useUser();
@@ -321,6 +324,7 @@ export default function Navbar() {
 
           {/* Action Area */}
           <div className="flex items-center gap-4 z-10">
+
             <LanguageSwitcher />
 
             {!isLoaded ? (

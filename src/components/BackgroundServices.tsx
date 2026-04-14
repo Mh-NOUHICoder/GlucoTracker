@@ -145,7 +145,25 @@ export default function BackgroundServices() {
     const interval = setInterval(checkReminders, 1000 * 60 * 1); // Check every 1 min
     checkReminders(); // check immediately
     
-    return () => clearInterval(interval);
+    // Offline Sync Handler
+    const handleOnline = async () => {
+      try {
+        const { syncOfflineReadings } = await import("@/lib/db");
+        await syncOfflineReadings();
+      } catch (err) {
+        console.error("Offline sync error", err);
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+       handleOnline();
+    }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("online", handleOnline);
+    };
   }, [user, t]);
 
   return null;

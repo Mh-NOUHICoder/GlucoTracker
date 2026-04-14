@@ -41,12 +41,13 @@ export default function DoctorAIChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const [selectedModel, setSelectedModel] = useState({
-    id: typeof window !== "undefined" ? localStorage.getItem("preferredModelId") || "gemini-2.0-flash" : "gemini-2.0-flash",
-    provider: typeof window !== "undefined" ? localStorage.getItem("preferredModelProvider") || "gemini" : "gemini",
-    name: typeof window !== "undefined" ? localStorage.getItem("preferredModelName") || "Gemini 2.0 Flash" : "Gemini 2.0 Flash"
+    id: typeof window !== "undefined" ? localStorage.getItem("preferredModelId") || "llama-3.3-70b-versatile" : "llama-3.3-70b-versatile",
+    provider: typeof window !== "undefined" ? localStorage.getItem("preferredModelProvider") || "groq" : "groq",
+    name: typeof window !== "undefined" ? localStorage.getItem("preferredModelName") || "Llama 3 (Groq/Free)" : "Llama 3 (Groq/Free)"
   });
 
   const availableModels = [
+    { id: "llama-3.3-70b-versatile", provider: "groq", name: "Llama 3.3 (Groq/Free)" },
     { id: "gemini-2.0-flash", provider: "gemini", name: "Gemini 2.0 Flash (Fast)" },
     { id: "gemini-1.5-pro", provider: "gemini", name: "Gemini 1.5 Pro (Deep)" },
     { id: "gpt-4o-mini", provider: "openai", name: "GPT-4o Mini (Speed)" },

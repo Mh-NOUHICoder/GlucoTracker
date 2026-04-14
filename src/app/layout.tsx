@@ -17,7 +17,6 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "GlucoTrack - Intelligent Care",
   description: "Monitor and analyze your glucose trends securely.",
-  manifest: "/manifest.json",
   icons: {
     icon: "/glucotracker.png",
     apple: "/ios.png",
