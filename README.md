@@ -4,11 +4,10 @@
   <p><strong>Intelligent Diabetes Monitoring & Clinical Analytics</strong></p>
 
   <p>
-    <img src="https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js" alt="Next.js" />
+    <img src="https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js" alt="Next.js" />
     <img src="https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?style=for-the-badge&logo=tailwind-css" alt="Tailwind CSS" />
     <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
     <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
-    <img src="https://img.shields.io/badge/Clerk-6C47FF?style=for-the-badge&logo=clerk&logoColor=white" alt="Clerk" />
   </p>
 
   <h4>A high-performance Progressive Web App (PWA) built for seamless medical tracking, professional reporting, and AI-driven insights.</h4>
@@ -22,9 +21,10 @@
 
 ### 🚀 Key Value Propositions
 - **Frictionless Logging**: Rapid data entry and AI-enhanced recognition to reduce the burden of manual tracking.
+- **Smart PWA Installation**: Revolutionary one-click installation on Desktop/Android and an intelligent fallback guide for iOS/Safari users.
 - **Clinical-Grade Reporting**: High-fidelity PDF generation with professional metrics like Estimated A1C and Time in Range (TIR).
-- **Universal Accessibility**: Full multi-language support (English, French, Arabic) with native RTL layout implementation.
-- **Premium User Experience**: Butter-smooth micro-interactions, custom loading orchestration, and a tailored "Cyber-Dark" design system.
+- **Universal Localization**: Full multi-language support (English, French, Arabic) with native RTL layout implementation.
+- **Premium Cyber-Medical UI**: Butter-smooth micro-animations, glassmorphism, shimmering beam effects, and a tailored "Cyber-Dark" design system.
 
 ---
 
@@ -33,31 +33,32 @@
 ### 🗠 Professional Dashboard
 - **Metabolic Trends**: Interactive charts showing glucose fluctuations over time.
 - **Time in Range (TIR)**: Visual donut charts displaying the percentage of time spent within target zones.
-- **Instant Metrics**: Real-time calculation of Average Glucose, Estimated A1C, and variability markers.
+- **AI Analysis Engine**: Instant calculation of Average Glucose, Estimated A1C, and variability markers using high-performance AI models.
 
 ### 📄 Advanced PDF Exports
-- **Cyber-Dark Aesthetics**: Beautifully designed reports ready for medical consultations.
-- **Localization**: Native support for **Arabic RTL** formatting, ensuring global usability.
-- **Metabolic Snapshots**: Includes detailed history tables, trend highlights, and target zone analysis.
+- **Internationalized Reporting**: Seamlessly switch between English, French, and Arabic (RTL) in clinical reports.
+- **Medical Snapshots**: Includes detailed history tables, trend highlights, and target zone analysis ready for physician review.
 
 ### 📸 AI & Image Integration
-- **Smart Observation**: (Powered by Gemini/OpenAI) Extract numerical data from glucose meter photos automatically.
-- **Live Camera**: Integrated WebRTC camera featuring a medical-style animated viewfinder for instant captures.
+- **Intelligent Extraction**: Extract numerical data from glucose meter photos automatically using advanced visual LLMs.
+- **Live Viewfinder**: Integrated WebRTC camera featuring a professional medical-style viewfinder for instant capture.
 
-### 📱 PWA Excellence
-- **Installable**: Full Progressive Web App support for a native feel on iOS, Android, and Windows.
-- **Performance**: Optimized with Next.js Turbopack for near-instant load times and 60fps animations.
+### 📱 PWA & Offline Freedom
+- **Offline Logging**: Powered by **Dexie.js (IndexedDB)**, allowing you to log glucose readings anytime—even with zero connectivity.
+- **Auto-Sync Engine**: Background synchronization automatically pushes clinical data to the cloud once a network connection is restored.
+- **Richer Install UI**: Branded "App Store" experience during installation with high-fidelity screenshots and descriptive walkthroughs.
+- **Native Experience**: Zero-friction integration on iOS, Android, and Windows with 60fps animations.
 
 ---
 
 ## 🛠 Modern Tech Architecture
 
-- **Frontend**: [Next.js 15 (App Router)](https://nextjs.org/) with React 19.
+- **Frontend**: [Next.js 16 (App Router)](https://nextjs.org/) with React 19.
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) using a custom CSS-variable-based medical theme.
 - **Authentication**: [Clerk](https://clerk.com/) with enterprise-grade security and custom dark-themed components.
-- **Database / API**: [Supabase](https://supabase.com/) for real-time data persistence and secure user policies.
-- **Animations**: [Framer Motion](https://framer.com/motion) for route transitions and interactive UI elements.
-- **PDF Core**: [@react-pdf/renderer](https://react-pdf.org/) for high-precision document generation.
+- **Animations**: [Framer Motion](https://framer.com/motion) for high-performance UI transitions and shimmering effects.
+- **Offline DB**: [Dexie.js](https://dexie.org/) for robust IndexedDB persistence and smart synchronization.
+- **PWA Core**: Powered by `@ducanh2912/next-pwa` for robust service worker orchestration.
 
 ---
 
@@ -67,28 +68,27 @@
 src/
 ├── app/                  # Application Logic (App Router)
 │   ├── api/              # AI Insights & Recognition Endpoints
-│   ├── auth/             # Modern Authentication Flows
+│   ├── manifest.ts       # Richer Install UI Manifest Configuration
 │   ├── dashboard/        # Clinical Analytics & Metrics
-│   ├── upload/           # Intelligent Data Capture Interface
 │   └── globals.css       # Tailwind v4 & Medical Design System
 ├── components/           # Modular & Atomic UI Components
+│   ├── PWAInstallButton  # Smart One-Click / Manual Guide Installer
 │   ├── InitialLoader.tsx # Premium Splash Screen Orchestrator
-│   ├── ReportPDF.tsx     # High-Fidelity PDF Templates
 │   └── Layout.tsx        # Global Glassmorphism Wrapper
-├── lib/                  # Framework Agnostic Logic (i18n, API clients)
+├── lib/                  # Framework Agnostic Logic (i18n, db clients)
 ├── hooks/                # Specialized State Management
 └── types/                # Robust Domain-Driven Type Definitions
 ```
 
 ---
 
-## 🎨 Professional Design System
+## 🎨 Design Language: "Cyber-Medical"
 
-GlucoTrack utilizes a curated **Medical Dark Palette** designed for clarity and reduced eye strain:
-- **Medical Black** (`#050a0f`): The primary obsidian surface.
-- **Medical Cyan** (`#06b6d4`): Core branding and actionable highlights.
-- **Target Green** (`#10B981`): Optimal metabolic states.
-- **Danger Red** (`#EF4444`): Hyperglycemic warnings.
+GlucoTrack utilizes a curated professional palette designed for clinical precision:
+- **Liquid Shimmer**: Dynamic light beam animations on primary CTAs.
+- **Frosted Glass**: High-index `backdrop-blur` for sophisticated depth.
+- **Holographic Shadows**: Layered cyan glows for interactive feedback.
+- **Typography**: Ultra-bold tracking-widest headers for a futuristic medical feel.
 
 ---
 
@@ -106,7 +106,15 @@ GlucoTrack utilizes a curated **Medical Dark Palette** designed for clarity and 
    npm install
    ```
 
-2. **Environment Configuration**: Create a `.env.local` based on the project's requirements.
+2. **Environment Configuration**: Set up `.env.local` with your provider keys.
+
+3. **Run Dev Server**:
+   ```bash
+   npm run dev
+   ```
+
+4. **Progressive Web App**: To test PWA features locally, ensure the PWA is enabled in `next.config.ts`.
+ration**: Create a `.env.local` based on the project's requirements.
 
 3. **Run Dev Server**:
    ```bash
