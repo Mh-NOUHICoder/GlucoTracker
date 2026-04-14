@@ -66,18 +66,35 @@
 
 ```text
 src/
-├── app/                  # Application Logic (App Router)
-│   ├── api/              # AI Insights & Recognition Endpoints
-│   ├── manifest.ts       # Richer Install UI Manifest Configuration
-│   ├── dashboard/        # Clinical Analytics & Metrics
-│   └── globals.css       # Tailwind v4 & Medical Design System
-├── components/           # Modular & Atomic UI Components
-│   ├── PWAInstallButton  # Smart One-Click / Manual Guide Installer
-│   ├── InitialLoader.tsx # Premium Splash Screen Orchestrator
-│   └── Layout.tsx        # Global Glassmorphism Wrapper
-├── lib/                  # Framework Agnostic Logic (i18n, db clients)
-├── hooks/                # Specialized State Management
-└── types/                # Robust Domain-Driven Type Definitions
+├── app/                        # Next.js App Router Core
+│   ├── api/                    # Backend Edge Functions
+│   │   ├── analyze/            # Glucose Meter Vision Extraction
+│   │   ├── chat/               # Doctor AI Conversational Engine
+│   │   ├── insights/           # Metabolic Pattern Analysis
+│   │   └── models/             # AI Engine Configuration
+│   ├── connections/            # Device Pairing & Bluetooth Logic
+│   ├── dashboard/              # Clinical Metrics & Real-time Trends
+│   ├── history/                # Patient Reading Logs & Management
+│   ├── models/                 # AI Model Selection & Settings
+│   ├── profile/                # Account & Preference Controls
+│   ├── report/                 # Medical PDF Generation Interface
+│   ├── upload/                 # Intelligent Visual Capture Entry
+│   ├── globals.css             # Tailwind v4 & Cyber-Medical System
+│   ├── layout.tsx              # Root Orchestrator & Provider Wrapper
+│   └── manifest.ts             # Richer Install UI Configuration
+├── components/                 # High-Fidelity React Components
+│   ├── BackgroundServices.tsx  # Offline Sync & Notification Engine
+│   ├── DoctorAIChat.tsx        # Morphing AI Core & Chat Overlay
+│   ├── Navbar.tsx              # Dynamic Navigation & Language Control
+│   ├── PWAInstallButton.tsx    # Smart One-Click / Guide Installer
+│   ├── UploadButton.tsx        # Visual Extraction Trigger
+│   └── ...                     # Atomic & Molecular UI Elements
+├── lib/                        # Core Domain Logic & Infrastructure
+│   ├── db.ts                   # Dexie.js (IndexedDB) Offline Storage
+│   ├── i18n.tsx                # Multi-language & RTL Orchestration
+│   ├── supabase.ts             # Live Cloud Synchronization Client
+│   └── units.ts                # Metabolic Unit Conversion Logic
+└── proxy.ts                    # Edge Middleware & Routing Orchestrator
 ```
 
 ---
