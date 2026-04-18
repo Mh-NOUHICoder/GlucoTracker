@@ -4,6 +4,7 @@ import OpenAI from "openai";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const maxDuration = 60; // Allow longer execution times on Vercel
 
 export async function POST(req: Request) {
   console.log("Chat API: POST Request received");
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
 
     const geminiKey = process.env.GEMINI_API_KEY;
     const openAiKey = process.env.OPEN_AI_KEY || process.env.OPENAI_API_KEY;
-    const groqKey = process.env.Groq_API_KEY;
+    const groqKey = process.env.Groq_API_KEY || process.env.GROQ_API_KEY;
 
     let systemPrompt = `You are "Doctor AI", a Senior Metabolic Specialist and Diabetes Clinician. 
 You are assisting ${userName || "a patient"} with metabolic monitoring.
