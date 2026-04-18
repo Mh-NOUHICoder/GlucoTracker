@@ -35,7 +35,9 @@ Current Time: ${new Date().toLocaleString('en-US')}
     if (context && context.length > 0) {
       systemPrompt += `\nRecent Glucose History (Last 12 readings):\n`;
       context.forEach((r: any) => {
-        systemPrompt += `- ${r.value} mg/dL at ${new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}\n`;
+        const dateStr = new Date(r.created_at).toLocaleDateString('en-US');
+        const timeStr = new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        systemPrompt += `- ${r.value} mg/dL on ${dateStr} at ${timeStr}\n`;
       });
       systemPrompt += `\nAnalyze these trends if the user asks about their status. Note any sudden spikes or lows.`;
     } else {

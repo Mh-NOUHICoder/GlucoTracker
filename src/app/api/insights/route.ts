@@ -17,11 +17,21 @@ export async function POST(req: Request) {
     const openAiKey = process.env.OPEN_AI_KEY || process.env.OPENAI_API_KEY;
 
     // Enhanced Fallback Heuristics (Localized & Prioritizing Latest Extremes)
-    const getFallbackInsight = (data: { value: number | string }[], l: string) => {
+    const getFallbackInsight = (data: any[], l: string) => {
       const values = data.map(r => Number(r.value));
       const latest = values[0];
       const prev = values[1] || latest;
       const diff = latest - prev;
+      
+      let isRecentChange = false;
+      if (data.length >= 2 && data[0].created_at && data[1].created_at) {
+          const t1 = new Date(data[0].created_at).getTime();
+          const t2 = new Date(data[1].created_at).getTime();
+          const timeDiffHours = Math.abs(t1 - t2) / (1000 * 60 * 60);
+          isRecentChange = timeDiffHours <= 4; // within 4 hours
+      } else if (data.length >= 2 && (!data[0].created_at || !data[1].created_at)) {
+          isRecentChange = true;
+      }
       
       const isArabic = l === 'ar';
       const isFrench = l === 'fr';
@@ -39,12 +49,12 @@ export async function POST(req: Request) {
       }
 
       // 2. Rapid Trends
-      if (diff > 40) {
+      if (isRecentChange && diff > 40) {
          if (isArabic) return `التحليل السريري يظهر ارتفاعاً حاداً مفاجئاً (+${Math.round(diff)}). تأكد من جرعة الأنسولين أو النشاط البدني الأخير.`;
          if (isFrench) return `L'analyse clinique indique une montée subite (+${Math.round(diff)}). Vérifiez votre dernière dose ou repas.`;
          return `Clinical observation: I see a sudden, sharp rise in your levels (+${Math.round(diff)}). Please review your recent insulin or carb intake.`;
       }
-      if (diff < -40) {
+      if (isRecentChange && diff < -40) {
         if (isArabic) return `هناك انخفاض سريع جداً في مستوياتك (${Math.round(diff)}). كطبيبك، أنصحك بالتأكد من استقرارك وتجنب النشاط الشاق الآن.`;
         if (isFrench) return `Votre glycémie chute très rapidement (${Math.round(diff)}). Assurez-vous d'être stable avant toute activité.`;
         return `I've noted a very rapid drop in your levels (${Math.round(diff)}). Please verify your stability immediately and avoid heavy activity.`;

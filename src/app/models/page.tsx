@@ -20,7 +20,8 @@ import {
   Clock,
   Droplet,
   Plus,
-  Minus
+  Minus,
+  X,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useUser } from "@clerk/nextjs";
@@ -73,6 +74,7 @@ export default function ProfileSettingsPage() {
   const [showDaysMenu, setShowDaysMenu] = useState(false);
   const [showUnitMenu, setShowUnitMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
+  const [modelFilter, setModelFilter] = useState<"best" | "all">("best");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -206,6 +208,11 @@ export default function ProfileSettingsPage() {
     setTimeout(() => window.location.reload(), 300);
   };
 
+  const bestIds = ["gpt-4o", "gpt-4o-mini", "gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash"];
+  const filteredModels = modelFilter === "best" 
+    ? models.filter(m => bestIds.some(id => m.id.includes(id)))
+    : models;
+
 
   return (
     <div className="max-w-4xl mx-auto pt-8 pb-20 space-y-8 px-4">
@@ -284,7 +291,7 @@ export default function ProfileSettingsPage() {
           >
             {/* Profile Section */}
             {activeTab === "profile" && (
-              <div className="bg-medical-dark/40 border border-white/5 p-8 rounded-3xl space-y-8 shadow-xl backdrop-blur-md">
+              <div className="bg-medical-dark/40 border border-white/5 p-5 sm:p-8 rounded-3xl space-y-8 shadow-xl backdrop-blur-md">
                  <div className="flex flex-col md:flex-row items-center gap-8">
                     <div className="relative group">
                        <div className="w-32 h-32 rounded-full border-4 border-medical-cyan/20 overflow-hidden shadow-2xl bg-medical-black">
@@ -356,8 +363,8 @@ export default function ProfileSettingsPage() {
             {activeTab === "general" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div 
-                    className="bg-medical-dark/40 border border-white/5 p-8 rounded-3xl space-y-6 shadow-xl backdrop-blur-md relative"
-                    style={{ zIndex: showUnitMenu ? 50 : 1 }}
+                    className="bg-medical-dark/40 border border-white/5 p-5 sm:p-8 rounded-3xl space-y-6 shadow-xl backdrop-blur-md relative"
+                    style={{ zIndex: showUnitMenu ? 70 : 1 }}
                   >
                     <div className="flex items-center gap-4">
                       <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
@@ -391,32 +398,55 @@ export default function ProfileSettingsPage() {
 
                            <AnimatePresence>
                              {showUnitMenu && (
-                               <motion.div
-                                 initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                                 exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                                 className="absolute left-0 right-0 mt-3 p-2 bg-medical-black/98 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.6)] z-[100] overflow-hidden"
-                               >
-                                 <div className="grid grid-cols-1 gap-1">
-                                   {["mg/dL", "mmol/L", "g/L"].map((u) => (
-                                     <button
-                                       key={u}
-                                       onClick={() => {
-                                         handleUnitToggle(u);
-                                         setShowUnitMenu(false);
-                                       }}
-                                       className={`flex items-center justify-between px-5 py-4 rounded-xl transition-all ${
-                                         unit === u 
-                                           ? "bg-medical-cyan text-white shadow-lg shadow-medical-cyan/30" 
-                                           : "text-gray-400 hover:text-white hover:bg-white/10"
-                                       }`}
-                                     >
-                                       <span className="text-lg font-black">{u}</span>
-                                       {unit === u && <CheckCircle className="w-5 h-5" />}
-                                     </button>
-                                   ))}
-                                 </div>
-                               </motion.div>
+                               <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                                  {/* Animated Backdrop */}
+                                  <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setShowUnitMenu(false)}
+                                    className="absolute inset-0 bg-medical-black/80 backdrop-blur-xl"
+                                  />
+
+                                  {/* Modal Selection Module */}
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                                    className="relative w-full max-w-sm bg-medical-dark/95 border border-white/10 rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden"
+                                  >
+                                     <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                           <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                              <Droplets className="w-5 h-5" />
+                                           </div>
+                                           <h3 className="text-xl font-black text-white">{t("unit_pref")}</h3>
+                                        </div>
+                                        <button onClick={() => setShowUnitMenu(false)} className="text-gray-500 hover:text-white p-2">
+                                           <X className="w-5 h-5" />
+                                        </button>
+                                     </div>
+                                     <div className="p-4 grid grid-cols-1 gap-2">
+                                       {["mg/dL", "mmol/L", "g/L"].map((u) => (
+                                         <button
+                                           key={u}
+                                           onClick={() => {
+                                             handleUnitToggle(u);
+                                             setShowUnitMenu(false);
+                                           }}
+                                           className={`flex items-center justify-between px-6 py-5 rounded-2xl transition-all ${
+                                             unit === u 
+                                               ? "bg-medical-cyan text-black shadow-lg shadow-medical-cyan/30" 
+                                               : "text-gray-400 hover:text-white hover:bg-white/5"
+                                           }`}
+                                         >
+                                           <span className="text-xl font-black">{u}</span>
+                                           {unit === u && <CheckCircle className="w-6 h-6" />}
+                                         </button>
+                                       ))}
+                                     </div>
+                                  </motion.div>
+                               </div>
                              )}
                            </AnimatePresence>
                         </div>
@@ -424,7 +454,7 @@ export default function ProfileSettingsPage() {
                     </div>
                   </div>
   
-                  <div className="bg-medical-dark/40 border border-white/5 p-8 rounded-3xl space-y-6 shadow-xl backdrop-blur-md">
+                  <div className="bg-medical-dark/40 border border-white/5 p-5 sm:p-8 rounded-3xl space-y-6 shadow-xl backdrop-blur-md">
                     <div className="flex items-center gap-4">
                       <div className="p-3 rounded-2xl bg-medical-cyan/10 text-medical-cyan border border-medical-cyan/20">
                         <Target className="w-6 h-6" />
@@ -468,8 +498,8 @@ export default function ProfileSettingsPage() {
             {/* AI Section */}
             {activeTab === "ai" && (
               <div 
-                className="bg-medical-dark/40 border border-white/5 p-8 rounded-3xl shadow-xl backdrop-blur-md relative"
-                style={{ zIndex: showModelMenu ? 50 : 1 }}
+                className="bg-medical-dark/40 border border-white/5 p-5 sm:p-8 rounded-3xl shadow-xl backdrop-blur-md relative"
+                style={{ zIndex: showModelMenu ? 70 : 1 }}
               >
                   <div className="flex items-center gap-4 mb-8">
                     <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
@@ -509,60 +539,138 @@ export default function ProfileSettingsPage() {
                        </div>
                      </button>
 
-                     <AnimatePresence>
-                       {showModelMenu && (
-                         <motion.div
-                           initial={{ opacity: 0, y: 15, scale: 0.98 }}
-                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                           exit={{ opacity: 0, y: 15, scale: 0.98 }}
-                           className="absolute left-0 right-0 mt-4 p-2 bg-medical-black/98 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-[0_30px_60px_rgba(0,0,0,0.6)] z-50 overflow-hidden max-h-[400px] overflow-y-auto no-scrollbar"
-                         >
-                           <div className="grid grid-cols-1 gap-1.5">
-                             {loadingModels ? (
-                               [1,2,3].map(i => <div key={i} className="h-16 bg-white/5 rounded-2xl animate-pulse mx-2 my-1" />)
-                             ) : models.length > 0 ? (
-                               models.map((m) => {
-                                 const isSelected = selectedModelId === m.id;
-                                 return (
-                                   <button
-                                     key={m.id}
-                                     onClick={() => {
-                                       handleModelSelect(m.id);
-                                       setShowModelMenu(false);
-                                     }}
-                                     className={`w-full text-left p-4 rounded-2xl flex items-center justify-between transition-all group/item ${
-                                       isSelected 
-                                         ? "bg-purple-500 text-white shadow-xl shadow-purple-500/20" 
-                                         : "text-gray-400 hover:text-white hover:bg-white/5"
-                                     }`}
-                                   >
-                                     <div className="flex items-center gap-4">
-                                        <div className={`w-2 h-2 rounded-full ${isSelected ? "bg-white animate-pulse" : "bg-gray-700"}`} />
-                                        <div>
-                                          <div className={`font-black tracking-tight ${isSelected ? "text-white" : "text-gray-200"}`}>{m.name}</div>
-                                          <span className={`text-[9px] uppercase tracking-widest font-bold ${isSelected ? "text-purple-100" : "text-gray-500"}`}>{m.provider}</span>
-                                        </div>
+                      <AnimatePresence>
+                        {showModelMenu && (
+                          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6">
+                            {/* Animated Backdrop */}
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              onClick={() => setShowModelMenu(false)}
+                              className="absolute inset-0 bg-medical-black/80 backdrop-blur-xl"
+                            />
+
+                            {/* Modal Selection Module */}
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                              className="relative w-full max-w-lg bg-medical-dark/95 border border-white/10 rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[85vh]"
+                            >
+                               {/* Decorative Header */}
+                               <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/5">
+                                  <div className="flex items-center gap-4">
+                                     <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                        <Cpu className="w-6 h-6" />
                                      </div>
-                                     {isSelected && <CheckCircle className="w-5 h-5 text-white" />}
-                                   </button>
-                                 )
-                               })
-                             ) : (
-                               <div className="p-8 text-center text-red-400 text-xs italic">
-                                 No vision models found.
+                                     <div>
+                                        <h3 className="text-xl font-black text-white tracking-tight">{t("select_engine")}</h3>
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t("models_title")}</p>
+                                     </div>
+                                  </div>
+                                  <button 
+                                    onClick={() => setShowModelMenu(false)}
+                                    className="p-3 rounded-xl bg-white/5 text-gray-400 hover:text-white transition-all"
+                                  >
+                                    <X className="w-5 h-5" />
+                                  </button>
                                </div>
-                             )}
-                           </div>
-                         </motion.div>
-                       )}
-                     </AnimatePresence>
+
+                               {/* Filter Tabs */}
+                               <div className="flex items-center gap-2 p-4 border-b border-white/5 bg-medical-black/40">
+                                  <button
+                                    onClick={() => setModelFilter("best")}
+                                    className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                                      modelFilter === "best"
+                                        ? "bg-purple-500/20 text-purple-400 border border-purple-500/30 shadow-inner"
+                                        : "bg-white/5 text-gray-500 hover:bg-white/10 hover:text-white"
+                                    }`}
+                                  >
+                                    Best Choices
+                                  </button>
+                                  <button
+                                    onClick={() => setModelFilter("all")}
+                                    className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                                      modelFilter === "all"
+                                        ? "bg-purple-500/20 text-purple-400 border border-purple-500/30 shadow-inner"
+                                        : "bg-white/5 text-gray-500 hover:bg-white/10 hover:text-white"
+                                    }`}
+                                  >
+                                    All Models
+                                  </button>
+                               </div>
+
+                               <div className="flex-1 overflow-y-auto p-4 no-scrollbar">
+                                  <div className="grid grid-cols-1 gap-2">
+                                    {loadingModels ? (
+                                      [1, 2, 3, 4].map(i => (
+                                        <div key={i} className="h-20 bg-white/5 rounded-2xl animate-pulse" />
+                                      ))
+                                    ) : filteredModels.length > 0 ? (
+                                      filteredModels.map((m) => {
+                                        const isSelected = selectedModelId === m.id;
+                                        return (
+                                          <button
+                                            key={m.id}
+                                            onClick={() => {
+                                              handleModelSelect(m.id);
+                                              setShowModelMenu(false);
+                                            }}
+                                            className={`w-full text-left p-5 rounded-2xl flex items-center justify-between transition-all group/item relative overflow-hidden ${
+                                              isSelected 
+                                                ? "bg-purple-500 text-white shadow-xl shadow-purple-500/20" 
+                                                : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10"
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-5 relative z-10">
+                                               <div className={`w-3 h-3 rounded-full ${isSelected ? "bg-white animate-pulse" : "bg-gray-700"} shadow-sm`} />
+                                               <div>
+                                                 <div className={`text-base font-black tracking-tight ${isSelected ? "text-white" : "text-gray-100"}`}>{m.name}</div>
+                                                 <span className={`text-[9px] uppercase tracking-widest font-black ${isSelected ? "text-purple-100" : "text-gray-500"}`}>{m.provider}</span>
+                                               </div>
+                                            </div>
+                                            {isSelected && (
+                                              <div className="relative z-10 p-2 bg-white/20 rounded-xl backdrop-blur-md border border-white/30">
+                                                <CheckCircle className="w-5 h-5 text-white" />
+                                              </div>
+                                            )}
+                                            {/* Subtle Glow Effect on Hover */}
+                                            {!isSelected && (
+                                              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-purple-500/0 group-hover/item:from-purple-500/5 transition-all duration-500" />
+                                            )}
+                                          </button>
+                                        )
+                                      })
+                                    ) : (
+                                       <div className="py-20 text-center space-y-4">
+                                          <Cpu className="w-12 h-12 text-gray-700 mx-auto opacity-20" />
+                                          <p className="text-gray-500 font-medium italic">
+                                             {modelFilter === "best" ? "No models found in this category." : (t("no_history") || "No history")}
+                                          </p>
+                                       </div>
+                                    )}
+                                  </div>
+                               </div>
+
+                               {/* Footer Info */}
+                               <div className="p-6 bg-white/5 border-t border-white/5">
+                                  <p className="text-[9px] font-bold text-gray-500 text-center uppercase tracking-[0.2em]">
+                                     {t("medical_disclaimer")}
+                                  </p>
+                               </div>
+                            </motion.div>
+                          </div>
+                        )}
+                      </AnimatePresence>
                   </div>
               </div>
             )}
   
             {/* Reminders Section */}
             {activeTab === "alerts" && (
-              <div className="bg-medical-dark/40 border border-white/5 p-8 rounded-3xl space-y-10 shadow-xl backdrop-blur-md">
+              <div className="bg-medical-dark/40 border border-white/5 p-5 sm:p-8 rounded-3xl space-y-10 shadow-xl backdrop-blur-md">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
                   <div className="flex items-center gap-4">
                     <div className="p-4 rounded-3xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
@@ -630,8 +738,8 @@ export default function ProfileSettingsPage() {
                 <div className="space-y-8">
                   {/* Glucose Alerts */}
                   <div 
-                    className="p-8 rounded-[2.5rem] bg-white/5 border border-white/5 space-y-8 shadow-xl relative"
-                    style={{ zIndex: showDaysMenu ? 50 : 1 }}
+                    className="p-5 sm:p-8 rounded-[2.5rem] bg-white/5 border border-white/5 space-y-8 shadow-xl relative"
+                    style={{ zIndex: showDaysMenu ? 70 : 1 }}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-6 flex-1">
@@ -665,35 +773,52 @@ export default function ProfileSettingsPage() {
 
                               <AnimatePresence>
                                 {showDaysMenu && (
-                                  <motion.div
-                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    className="absolute left-0 mt-3 p-2 bg-medical-black/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl z-50 min-w-[160px] grid grid-cols-1 gap-1"
-                                  >
-                                    {[1, 2, 3, 7].map((d) => (
-                                      <button
-                                        key={d}
-                                        onClick={() => {
-                                          setInactivityDays(d);
-                                          setShowDaysMenu(false);
-                                        }}
-                                        className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-                                          inactivityDays === d 
-                                            ? "bg-medical-cyan/10 text-medical-cyan" 
-                                            : "text-gray-400 hover:text-white hover:bg-white/5"
-                                        }`}
-                                      >
-                                        <div className="flex items-center gap-3">
-                                          <span className="text-lg font-black">{d}</span>
-                                          <span className="text-[10px] font-bold uppercase tracking-widest">
-                                            {d === 1 ? t("day") : t("days")}
-                                          </span>
+                                  <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                                     <motion.div
+                                       initial={{ opacity: 0 }}
+                                       animate={{ opacity: 1 }}
+                                       exit={{ opacity: 0 }}
+                                       onClick={() => setShowDaysMenu(false)}
+                                       className="absolute inset-0 bg-medical-black/80 backdrop-blur-xl"
+                                     />
+                                     <motion.div
+                                       initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                                       animate={{ opacity: 1, scale: 1, y: 0 }}
+                                       exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                                       className="relative w-full max-w-xs bg-medical-dark/95 border border-white/10 rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden"
+                                     >
+                                        <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                                           <h3 className="text-xl font-black text-white">{t("remind_every")}</h3>
+                                           <button onClick={() => setShowDaysMenu(false)} className="text-gray-500 hover:text-white p-2">
+                                              <X className="w-5 h-5" />
+                                           </button>
                                         </div>
-                                        {inactivityDays === d && <CheckCircle className="w-4 h-4" />}
-                                      </button>
-                                    ))}
-                                  </motion.div>
+                                        <div className="p-4 grid grid-cols-1 gap-2">
+                                          {[1, 2, 3, 7].map((d) => (
+                                            <button
+                                              key={d}
+                                              onClick={() => {
+                                                setInactivityDays(d);
+                                                setShowDaysMenu(false);
+                                              }}
+                                              className={`flex items-center justify-between px-6 py-5 rounded-2xl transition-all ${
+                                                inactivityDays === d 
+                                                  ? "bg-medical-cyan text-black shadow-lg" 
+                                                  : "text-gray-400 hover:text-white hover:bg-white/5"
+                                              }`}
+                                            >
+                                              <div className="flex items-center gap-4">
+                                                <span className="text-3xl font-black tabular-nums">{d}</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-inherit opacity-80">
+                                                  {d === 1 ? t("day") : t("days")}
+                                                </span>
+                                              </div>
+                                              {inactivityDays === d && <CheckCircle className="w-6 h-6" />}
+                                            </button>
+                                          ))}
+                                        </div>
+                                     </motion.div>
+                                  </div>
                                 )}
                               </AnimatePresence>
                            </div>
@@ -738,7 +863,7 @@ export default function ProfileSettingsPage() {
                   </div>
 
                   {/* Hydration Alerts */}
-                  <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/5 space-y-8 shadow-xl">
+                  <div className="p-5 sm:p-8 rounded-[2.5rem] bg-white/5 border border-white/5 space-y-8 shadow-xl">
                     <div className="flex items-center justify-between">
                       <div className="space-y-2">
                         <div className="text-xl font-bold text-white flex items-center gap-3">
